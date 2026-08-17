@@ -1,0 +1,13 @@
+/.venv
+__pycache__/
+*.py[cod]
+AppData/
+.vscode/
+build/
+dist/
+*.spec
+.pytest_cache/
+.coverage
+htmlcov/
+.DS_Store
+Thumbs.db
