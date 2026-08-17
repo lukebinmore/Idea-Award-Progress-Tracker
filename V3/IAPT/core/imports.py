@@ -1,6 +1,6 @@
-from pathlib import Path
 from openpyxl import load_workbook
 from IAPT.core.config import load_config
+from IAPT.core.database import upsert_students, upsert_results, upsert_schedule, initialise_database
 
 
 def read_excel_data(file_path, headers):
@@ -25,13 +25,15 @@ def read_excel_data(file_path, headers):
     return data
 
 
-def import_students(file_path):
+def import_students(file_path, class_name):
     config = load_config()["student_import"]
-
     data = read_excel_data(file_path, config.values())
 
     students = []
     for student in data:
+        if not student[config["student_id"]]:
+            continue
+
         students.append(
             {
                 "student_id": student[config["student_id"]],
@@ -40,7 +42,54 @@ def import_students(file_path):
             }
         )
 
-    return students
+    upsert_students(students, class_name)
 
 
-import_students("C:\\Users\\lukeb\\Downloads\\students.xlsx")
+def import_results(file_path):
+    config = load_config()["results_import"]
+    data = read_excel_data(file_path, config.values())
+
+    results = []
+    for row in data:
+        if row[config["badge_list"]]:
+            row[config["badge_list"]] = row[config["badge_list"]].split(",")
+
+        results.append(
+            {
+                "student_id": row[config["student_id"]].split("@")[0],
+                "bronze_points_total": row[config["bronze_points_total"]] or 0,
+                "bronze_citizen": row[config["bronze_citizen"]] or 0,
+                "bronze_worker": row[config["bronze_worker"]] or 0,
+                "bronze_maker": row[config["bronze_maker"]] or 0,
+                "bronze_entrepreneur": row[config["bronze_entrepreneur"]] or 0,
+                "silver_points_total": row[config["silver_points_total"]] or 0,
+                "badge_list": row[config["badge_list"]] or [],
+            }
+        )
+
+    upsert_results(results)
+
+
+def import_schedule(file_path):
+    config = load_config()["schedule_import"]
+    data = read_excel_data(file_path, config.values())
+
+    homeworks = []
+    for homework in data:
+        homework[config["due_date"]] = homework[config["due_date"]].date()
+        homeworks.append(
+            {
+                "badge_name": homework[config["badge_name"]] or "",
+                "category": homework[config["category"]] or "",
+                "points": homework[config["points"]],
+                "due_date": homework[config["due_date"]],
+            }
+        )
+
+    upsert_schedule(homeworks)
+
+
+initialise_database()
+import_students("C:\\Users\\lukeb\\Downloads\\students.xlsx", "9X-It1")
+import_results("C:\\Users\\lukeb\\Downloads\\test.xlsx")
+import_schedule("C:\\Users\\lukeb\\Downloads\\homework.xlsx")

@@ -39,6 +39,7 @@ DEFAULT_CONFIG = {
         "silver_award_date": "Silver Award Date",
         "badge_list": "Badge List",
     },
+    "schedule_import": {"badge_name": "Badge Name", "category": "Category", "points": "Points", "due_date": "Due Date"},
 }
 
 
