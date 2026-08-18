@@ -1,6 +1,9 @@
 import sys
 import json
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_app_root() -> Path:
@@ -40,10 +43,11 @@ DEFAULT_CONFIG = {
         "badge_list": "Badge List",
     },
     "schedule_import": {"badge_name": "Badge Name", "category": "Category", "points": "Points", "due_date": "Due Date"},
+    "settings": {"log_level": "INFO"},
 }
 
 
-def create_app_directories():
+def initialise_directories():
     directories = [
         DATABASE_DIR,
         CONFIG_DIR,
@@ -82,8 +86,26 @@ def initialise_config():
             json.dump(config, file, indent=4)
 
 
-def load_config():
-    initialise_config()
+def load_config(section=None):
+    try:
+        with CONFIG_PATH.open("r", encoding="utf-8") as file:
+            config = json.load(file)
+            if section:
+                return config[section]
+            return config
 
-    with CONFIG_PATH.open("r", encoding="utf-8") as file:
-        return json.load(file)
+    except FileNotFoundError:
+        logger.error_detail("Config file could not be found")
+        raise
+
+    except json.JSONDecodeError:
+        logger.error_detail("Config file contains invalid JSON")
+        raise
+
+    except OSError:
+        logger.error_detail("Config file could not be read")
+        raise
+
+    except KeyError:
+        logger.error_detail("Config section not found", extra={"section": section})
+        raise

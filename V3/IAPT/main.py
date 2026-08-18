@@ -1,6 +1,4 @@
-def main():
-    print("Starting Application...")
-
+from IAPT.core.application import run
 
 if __name__ == "__main__":
-    main()
+    run()
