@@ -11,7 +11,7 @@ def run():
 
     try:
         logger.info("Application started")
-        test_imports()
+        # test_imports()
         start_gui()
     except Exception:
         logger.critical("Application encountered an unexpected error")

@@ -13,7 +13,15 @@ def get_app_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def get_package_root() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS)
+
+    return Path(__file__).resolve().parents[1]
+
+
 APP_ROOT = get_app_root()
+PACKAGE_ROOT = get_package_root()
 APP_DATA = APP_ROOT / "AppData"
 
 DATABASE_DIR = APP_DATA / "database"
