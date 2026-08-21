@@ -1,19 +1,49 @@
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QLabel, QWidget, QPushButton, QLineEdit, QComboBox
+from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QLabel, QWidget, QPushButton, QLineEdit
 from IAPT.gui.icons.icons import *
 
 
-class Box(QWidget):
-    def __init__(self, vertical=False, layout=None, name=None, stretch=0):
-        super().__init__()
+class Component:
+    @staticmethod
+    def setup(widget, **kwargs):
+        layout = kwargs.pop("layout", None)
+        name = kwargs.pop("name", None)
+        variant = kwargs.pop("variant", None)
+        stretch = kwargs.pop("stretch", 0)
+        enabled = kwargs.pop("enabled", True)
 
-        self.setObjectName(name) if name else None
+        if name:
+            widget.setObjectName(name)
+
+        if variant:
+            widget.setProperty("variant", variant)
+
+        widget.setEnabled(enabled)
+
+        if layout:
+            layout.addWidget(widget, stretch)
+
+
+class Box(QWidget):
+    def __init__(self, vertical=False, align="center", **kwargs):
+        super().__init__()
+        Component.setup(self, **kwargs)
+
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.layout = QVBoxLayout(self) if vertical else QHBoxLayout(self)
         self.setMargins(0, 0, 0, 0)
         self.setSpacing(0)
 
-        layout.addWidget(self, stretch=stretch) if layout else None
+        if align == "left":
+            self.layout.setAlignment(Qt.AlignLeft)
+        elif align == "right":
+            self.layout.setAlignment(Qt.AlignRight)
+        elif align == "top":
+            self.layout.setAlignment(Qt.AlignTop)
+        elif align == "bottom":
+            self.layout.setAlignment(Qt.AlignBottom)
+        else:
+            self.layout.setAlignment(Qt.AlignCenter)
 
     def addWidget(self, widget, stretch=0):
         self.layout.addWidget(widget, stretch)
@@ -25,78 +55,81 @@ class Box(QWidget):
         self.layout.setSpacing(spacing)
 
 
-class Page(Box):
-    page_title = "Untitled Page"
+class Button(QPushButton):
+    def __init__(self, text="", icon=None, icon_size=None, **kwargs):
+        super().__init__(text)
+        Component.setup(self, **kwargs)
 
-    def __init__(self):
-        super().__init__(vertical=True, name="page")
+        self.setIcon(icon) if icon else None
+        self.setIconSize(QSize(*icon_size)) if icon_size else None
+
+
+class Label(QLabel):
+    def __init__(self, text="", align="center", **kwargs):
+        super().__init__(text)
+        Component.setup(self, **kwargs)
+
+        if align == "center":
+            self.setAlignment(Qt.AlignCenter)
+        elif align == "left":
+            self.setAlignment(Qt.AlignLeft)
+        else:
+            self.setAlignment(Qt.AlignRight)
+
+
+class LineEdit(QLineEdit):
+    def __init__(self, **kwargs):
+        super().__init__()
+        Component.setup(self, **kwargs)
 
 
 class Header(Box):
     def __init__(self, layout):
         super().__init__(vertical=False, layout=layout, name="header")
 
-        self.back_button = QPushButton()
-        self.back_button.setObjectName("back_button")
-        self.back_button.setIcon(back_icon)
-        self.back_button.setIconSize(QSize(30, 30))
-        self.back_button.setEnabled(False)
-        self.addWidget(self.back_button)
-
-        program_title = QLabel("Idea Award Progress Tracker")
-        program_title.setObjectName("program_title")
-        program_title.setAlignment(Qt.AlignCenter)
-        self.addWidget(program_title, stretch=1)
-
-        self.forward_button = QPushButton()
-        self.forward_button.setObjectName("forward_button")
-        self.forward_button.setIcon(forward_icon)
-        self.forward_button.setIconSize(QSize(30, 30))
-        self.forward_button.setEnabled(False)
-        self.addWidget(self.forward_button)
+        self.back_button = Button(layout=self, name="back_btn", icon=back_icon, icon_size=(30, 30), enabled=False)
+        self.program_title = Label(text="Idea Award Progress Tracker", layout=self, name="program_title", stretch=1)
+        self.forward_button = Button(
+            layout=self, name="forward_btn", icon=forward_icon, icon_size=(30, 30), enabled=False
+        )
 
 
 class Footer(Box):
     def __init__(self, layout):
         super().__init__(vertical=False, layout=layout, name="footer")
 
-        quote = QLabel("Fun Quotes go here")
-        quote.setObjectName("quote")
-        quote.setAlignment(Qt.AlignCenter)
-        self.addWidget(quote)
+        quote = Label(text="Fun quotes go here", layout=self, name="quote")
 
 
 class Navigation(Box):
-    def __init__(self, layout):
-        super().__init__(vertical=True, layout=layout, name="navigation")
+    pageSelected = Signal(object)
+
+    def __init__(self, layout, pages):
+        super().__init__(vertical=True, layout=layout, name="navigation", align="top")
+
+        self.navigation_buttons = {}
 
         self.setFixedWidth(150)
+
+        Label(text="Navigation", layout=self, name="navigation_label")
+
+        for page in pages:
+            button = Button(text=page.page_title, layout=self, name=page.nav_btn_name, variant="navigation_btn")
+            button.clicked.connect(lambda checked=False, page=page: self.pageSelected.emit(page))
+            self.navigation_buttons[page.nav_btn_name] = button
 
 
 class Search(Box):
     def __init__(self, layout):
         super().__init__(vertical=False, layout=layout, name="search")
 
-        self.setSpacing(0)
-
-        search_label = QLabel("Search:")
-        search_label.setObjectName("search_label")
-        self.addWidget(search_label)
-
-        self.search_box = QLineEdit()
-        self.search_box.setObjectName("searchbox")
-        self.addWidget(self.search_box, stretch=1)
-
-        self.search_type = QComboBox()
-        self.search_type.setObjectName("search_type")
-        self.search_type.addItem("All", "all")
-        self.search_type.addItem("Current Page", "current_page")
-        self.addWidget(self.search_type)
+        search_label = Label(text="Search:", layout=self, name="search_label")
+        self.search_box = LineEdit(layout=self, stretch=1, name="searchbox")
 
 
 class Filters(Box):
     def __init__(self, layout):
-        super().__init__(vertical=True, layout=layout, name="filters")
+        super().__init__(vertical=True, layout=layout, name="filters", align="top")
 
         self.setFixedWidth(150)
 

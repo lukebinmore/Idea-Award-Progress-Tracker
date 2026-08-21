@@ -1,5 +1,5 @@
 import sys
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget
 from PySide6.QtCore import QFileSystemWatcher
 from IAPT.gui.main_window import MainWindow
 from IAPT.core.config import PACKAGE_ROOT

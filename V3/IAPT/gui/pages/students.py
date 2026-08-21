@@ -1,15 +1,11 @@
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QLabel
-from IAPT.gui.components import Page
+from IAPT.gui.components import Box, Label
 
 
-class StudentsPage(Page):
+class StudentsPage(Box):
     page_title = "Students"
+    nav_btn_name = "students_btn"
 
     def __init__(self):
-        super().__init__()
+        super().__init__(vertical=True, name="students_page", align="top")
 
-        title = QLabel("Students")
-        title.setObjectName("page_title")
-        title.setAlignment(Qt.AlignCenter)
-        self.addWidget(title)
+        Label(text=self.page_title, layout=self, variant="page_title")

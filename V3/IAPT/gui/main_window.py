@@ -2,6 +2,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
 )
 from IAPT.gui.components import Box, Header, Footer, Navigation, Search, Filters, PageArea
+from IAPT.gui.page_registry import NAV_PAGES
 from IAPT.gui.pages.students import StudentsPage
 
 
@@ -15,25 +16,30 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(base)
 
         # Header
-        header = Header(base)
-
-        # Search
-        search = Search(base)
+        header = Header(layout=base)
 
         # Body
         body = Box(layout=base, name="body")
 
         # Navigation
-        navigation = Navigation(body)
+        navigation = Navigation(layout=body, pages=NAV_PAGES)
+
+        # Content Divider
+        content = Box(vertical=True, layout=body, name="content")
+
+        # Search
+        search = Search(layout=content)
+
+        main_content = Box(layout=content, name="main_content")
 
         # Main Page Content
-        page_area = PageArea(body)
+        page_area = PageArea(layout=main_content)
 
         # Filters
-        filters = Filters(body)
+        filters = Filters(layout=main_content)
 
         # Footer
-        Footer(base)
+        Footer(layout=base)
 
         # Signal Connections
         header.back_button.clicked.connect(page_area.goBack)
@@ -41,9 +47,6 @@ class MainWindow(QMainWindow):
         header.forward_button.clicked.connect(page_area.goForward)
         page_area.forwardAvailable.connect(header.forward_button.setEnabled)
 
-        page_area.showPage(StudentsPage)
-        page_area.showPage(StudentsPage)
-        page_area.showPage(StudentsPage)
-        page_area.showPage(StudentsPage)
-        page_area.showPage(StudentsPage)
+        navigation.pageSelected.connect(page_area.showPage)
+
         page_area.showPage(StudentsPage)
