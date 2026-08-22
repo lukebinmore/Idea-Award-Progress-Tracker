@@ -55,6 +55,15 @@
 /* #region Navigation */
 #navigation {
     background-color: #181818;
+    margin: 10px 0;
+    border-top-right-radius: 30px;
+    border-bottom-right-radius: 30px;
+}
+
+#navigation_label {
+    font-size: 15px;
+    padding: 10px;
+    margin-top: 10px;
 }
 /* #endregion */
 
@@ -104,6 +113,15 @@
 /* #region Filters & Sort */
 #filters {
     background-color: #181818;
+    margin: 10px 0;
+    border-top-left-radius: 30px;
+    border-bottom-left-radius: 30px;
+}
+
+#filters_label {
+    font-size: 15px;
+    padding: 10px;
+    margin-top: 10px;
 }
 /* #endregion */
 

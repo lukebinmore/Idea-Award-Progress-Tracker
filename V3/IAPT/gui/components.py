@@ -1,5 +1,6 @@
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QLabel, QWidget, QPushButton, QLineEdit
+from PySide6.QtCore import QEvent
+from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QLabel, QWidget, QPushButton, QLineEdit, QSizePolicy
 from IAPT.gui.icons.icons import *
 
 
@@ -25,7 +26,7 @@ class Component:
 
 
 class Box(QWidget):
-    def __init__(self, vertical=False, align="center", **kwargs):
+    def __init__(self, vertical=False, align="top", **kwargs):
         super().__init__()
         Component.setup(self, **kwargs)
 
@@ -53,6 +54,60 @@ class Box(QWidget):
 
     def setSpacing(self, spacing):
         self.layout.setSpacing(spacing)
+
+
+class CollapsibleBox(Box):
+    def __init__(self, icon=None, icon_size=None, **kwargs):
+        name = kwargs.get("name")
+        layout = kwargs.get("layout")
+        super().__init__(**kwargs)
+
+        self.width_collapsed = False
+        self.manual_collapsed = False
+        self.collapsed_button = Button(layout=layout, icon=icon, icon_size=icon_size, name=name + "_collapsed_btn")
+        self.collapsed_button.installEventFilter(self)
+        self.collapsed_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+
+    def setCollapsed(self, collapsed):
+        if collapsed:
+            self.hide()
+            self.collapsed_button.show()
+        else:
+            self.show()
+            self.collapsed_button.hide()
+
+    def checkWidth(self, width):
+        if not self.manual_collapsed:
+            if width < 700:
+                self.width_collapsed = True
+                self.setCollapsed(True)
+            else:
+                self.width_collapsed = False
+                self.setCollapsed(False)
+
+    def eventFilter(self, watched, event):
+        if watched == self.collapsed_button:
+            if event.type() == QEvent.Enter:
+                self.setCollapsed(False)
+        return super().eventFilter(watched, event)
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        if self.width_collapsed:
+            self.setCollapsed(True)
+
+    def getCollapseButtonText(self):
+        return "Collapse" if not self.manual_collapsed else "Expand"
+
+
+class Page(Box):
+    page_title = "untitled_page"
+    nav_btn_name = "untitled_btn"
+
+    def __init__(self, name="untitled_page"):
+        super().__init__(vertical=True, align="top", name=name)
+
+        Label(text=self.page_title, layout=self, variant="page_title")
 
 
 class Button(QPushButton):
@@ -85,7 +140,7 @@ class LineEdit(QLineEdit):
 
 class Header(Box):
     def __init__(self, layout):
-        super().__init__(vertical=False, layout=layout, name="header")
+        super().__init__(layout=layout, name="header")
 
         self.back_button = Button(layout=self, name="back_btn", icon=back_icon, icon_size=(30, 30), enabled=False)
         self.program_title = Label(text="Idea Award Progress Tracker", layout=self, name="program_title", stretch=1)
@@ -96,19 +151,18 @@ class Header(Box):
 
 class Footer(Box):
     def __init__(self, layout):
-        super().__init__(vertical=False, layout=layout, name="footer")
+        super().__init__(layout=layout, name="footer")
 
         quote = Label(text="Fun quotes go here", layout=self, name="quote")
 
 
-class Navigation(Box):
+class Navigation(CollapsibleBox):
     pageSelected = Signal(object)
 
     def __init__(self, layout, pages):
-        super().__init__(vertical=True, layout=layout, name="navigation", align="top")
+        super().__init__(vertical=True, layout=layout, name="navigation", icon=navigation_icon)
 
         self.navigation_buttons = {}
-
         self.setFixedWidth(150)
 
         Label(text="Navigation", layout=self, name="navigation_label")
@@ -121,17 +175,19 @@ class Navigation(Box):
 
 class Search(Box):
     def __init__(self, layout):
-        super().__init__(vertical=False, layout=layout, name="search")
+        super().__init__(layout=layout, name="search")
 
         search_label = Label(text="Search:", layout=self, name="search_label")
         self.search_box = LineEdit(layout=self, stretch=1, name="searchbox")
 
 
-class Filters(Box):
+class Filters(CollapsibleBox):
     def __init__(self, layout):
-        super().__init__(vertical=True, layout=layout, name="filters", align="top")
+        super().__init__(vertical=True, layout=layout, name="filters", icon=filters_icon)
 
         self.setFixedWidth(150)
+
+        Label(text="Testing", layout=self, name="filters_label")
 
 
 class PageEntry:
