@@ -141,4 +141,33 @@
 #page {
     background-color: transparent;
 }
+
+QLabel[variant="page_title"] {
+    font-size: 15px;
+    min-height: 40px;
+}
+
+QTableWidget[variant="list"] {
+    background-color: transparent;
+    gridline-color: transparent;
+}
+
+QHeaderView[variant="list"]::section {
+    font-size: 13px;
+}
+
+QTableWidget[variant="list"]::item {
+    border-bottom: 1px solid #3A3A3A;
+    border-left: none;
+    border-right: none;
+}
+
+QTableWidget[variant="list"]::item:selected {
+    background-color: transparent;
+    color: white;
+}
+
+/* #endregion */
+
+/* #region Students Page */
 /* #endregion */

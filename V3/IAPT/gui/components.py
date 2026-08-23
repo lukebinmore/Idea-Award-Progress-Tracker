@@ -1,6 +1,17 @@
 from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtCore import QEvent
-from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QLabel, QWidget, QPushButton, QLineEdit, QSizePolicy
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QVBoxLayout,
+    QLabel,
+    QWidget,
+    QPushButton,
+    QLineEdit,
+    QSizePolicy,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+)
 from IAPT.gui.icons.icons import *
 
 
@@ -58,15 +69,17 @@ class Box(QWidget):
 
 class CollapsibleBox(Box):
     def __init__(self, icon=None, icon_size=None, **kwargs):
-        name = kwargs.get("name")
+        name = kwargs.get("name", "default")
         layout = kwargs.get("layout")
         super().__init__(**kwargs)
 
         self.width_collapsed = False
-        self.manual_collapsed = False
         self.collapsed_button = Button(layout=layout, icon=icon, icon_size=icon_size, name=name + "_collapsed_btn")
-        self.collapsed_button.installEventFilter(self)
         self.collapsed_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+
+        self.collapsed_button.installEventFilter(self)
+        self.window().installEventFilter(self)
+        self.installEventFilter(self)
 
     def setCollapsed(self, collapsed):
         if collapsed:
@@ -77,27 +90,23 @@ class CollapsibleBox(Box):
             self.collapsed_button.hide()
 
     def checkWidth(self, width):
-        if not self.manual_collapsed:
-            if width < 700:
-                self.width_collapsed = True
-                self.setCollapsed(True)
-            else:
-                self.width_collapsed = False
-                self.setCollapsed(False)
+        if width < 700:
+            self.width_collapsed = True
+            self.setCollapsed(True)
+        else:
+            self.width_collapsed = False
+            self.setCollapsed(False)
 
     def eventFilter(self, watched, event):
-        if watched == self.collapsed_button:
-            if event.type() == QEvent.Enter:
-                self.setCollapsed(False)
-        return super().eventFilter(watched, event)
-
-    def leaveEvent(self, event):
-        super().leaveEvent(event)
         if self.width_collapsed:
-            self.setCollapsed(True)
+            if watched == self.collapsed_button:
+                if event.type() == QEvent.Enter:
+                    self.setCollapsed(False)
 
-    def getCollapseButtonText(self):
-        return "Collapse" if not self.manual_collapsed else "Expand"
+            elif event.type() == QEvent.Leave:
+                if watched == self or watched == self.window():
+                    self.setCollapsed(True)
+        return super().eventFilter(watched, event)
 
 
 class Page(Box):
@@ -136,6 +145,86 @@ class LineEdit(QLineEdit):
     def __init__(self, **kwargs):
         super().__init__()
         Component.setup(self, **kwargs)
+
+
+class Table(QTableWidget):
+
+    def __init__(self, columns, expandable=True, **kwargs):
+        variant = kwargs.get("variant", None)
+        super().__init__()
+        Component.setup(self, **kwargs)
+
+        self.row_objects = {}
+        self.expandable = expandable
+
+        self.verticalHeader().setVisible(False)
+        self.setSelectionBehavior(QTableWidget.SelectRows)
+        self.setSelectionMode(QTableWidget.SingleSelection)
+        self.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.setColumnCount(len(columns))
+        self.setHorizontalHeaderLabels([name for name, attribute in columns])
+        self.horizontalHeader().setStretchLastSection(True)
+        self.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
+        self.horizontalHeader().setProperty("variant", variant) if variant else None
+
+        self.cellClicked.connect(self._cellClicked) if self.expandable else None
+
+    def sizeColumns(self):
+        available_width = self.viewport().width()
+
+        final_widths = []
+        for column in range(self.columnCount()):
+            widest = 0
+            minimum = self.horizontalHeader().sectionSizeHint(column) + 10
+            for row in range(self.rowCount()):
+                item = self.item(row, column)
+                if item:
+                    width = self.fontMetrics().horizontalAdvance(item.text()) + 10
+                    widest = max(widest, width)
+            final_widths.append(max(minimum, widest))
+
+        if sum(final_widths) <= available_width:
+            extra_width = (available_width - sum(final_widths)) / len(final_widths)
+            final_widths = [width + extra_width for width in final_widths]
+
+        for column, width in enumerate(final_widths):
+            self.setColumnWidth(column, width)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.sizeColumns()
+
+    def registerRow(self, row, student_row):
+        self.row_objects[row] = student_row
+
+    def _cellClicked(self, row, column):
+        if row in self.row_objects:
+            self.row_objects[row].toggleOverview()
+
+
+class TableRow:
+    def __init__(self, table, columns, data):
+        self.table = table
+
+        self.summary_row = table.rowCount()
+        table.insertRow(self.summary_row)
+        table.registerRow(self.summary_row, self)
+        for column, attribute in enumerate(columns):
+            value = getattr(data, attribute)
+            item = QTableWidgetItem(str(value))
+            item.setTextAlignment(Qt.AlignCenter)
+            table.setItem(self.summary_row, column, item)
+
+        if self.table.expandable:
+            self.content_row = table.rowCount()
+            table.insertRow(self.content_row)
+            table.setSpan(self.content_row, 0, 1, len(columns))
+            self.content = QWidget()
+            table.setCellWidget(self.content_row, 0, self.content)
+            table.setRowHidden(self.content_row, True)
+
+    def toggleOverview(self):
+        self.table.setRowHidden(self.content_row, not self.table.isRowHidden(self.content_row))
 
 
 class Header(Box):
