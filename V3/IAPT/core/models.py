@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import date
 
 
 @dataclass
@@ -7,5 +8,44 @@ class Student:
     firstname: str
     lastname: str
     classname: str
-    outstanding: int = 0
+    account_found: bool = False
+
+    bronze_previous: int = 0
+    bronze_current: int = 0
+    bronze_citizen_previous: int = 0
+    bronze_citizen_current: int = 0
+    bronze_worker_previous: int = 0
+    bronze_worker_current: int = 0
+    bronze_maker_previous: int = 0
+    bronze_maker_current: int = 0
+    bronze_entrepreneur_previous: int = 0
+    bronze_entrepreneur_current: int = 0
+    silver_previous: int = 0
+    silver_current: int = 0
+
+    badges: list[Badge] = field(default_factory=list)
+    completed_homeworks: list[Homework] = field(default_factory=list)
+    late_homeworks: list[Homework] = field(default_factory=list)
+    missing_homeworks: list[Homework] = field(default_factory=list)
+    points_from_homeworks: int = 0
+
+    complete: int = 0
     late: int = 0
+    outstanding: int = 0
+
+    bronze_awarded: bool = False
+    silver_awarded: bool = False
+
+
+@dataclass
+class Badge:
+    name: str
+    completed_date: date
+
+
+@dataclass
+class Homework:
+    badge_name: str
+    category: str
+    points: int
+    due_date: date

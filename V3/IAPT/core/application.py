@@ -1,6 +1,7 @@
 from IAPT.core.startup import startup
 from IAPT.gui.gui import start_gui
 from IAPT.core.imports import import_students, import_results, import_schedule
+from IAPT.core.database import read_students
 import logging
 
 logger = logging.getLogger(__name__)
