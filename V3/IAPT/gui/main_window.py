@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QMainWindow
 from PySide6.QtCore import Signal
-from IAPT.gui.components import Box, Header, Footer, Navigation, Search, Filters, PageArea
+from IAPT.gui.components import Box, Header, Footer, Navigation, Search, Filters, PageArea, NotificationArea
 from IAPT.gui.page_registry import NAV_PAGES
 from IAPT.gui.pages.students import StudentsPage
 
@@ -15,6 +15,9 @@ class MainWindow(QMainWindow):
         # Main Base
         base = Box(vertical=True, name="base")
         self.setCentralWidget(base)
+
+        # Notification Area
+        self.notifications = NotificationArea(self)
 
         # Header
         header = Header(layout=base)
@@ -57,3 +60,4 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.widthChanged.emit(self.width())
+        self.notifications.updateGeometry()

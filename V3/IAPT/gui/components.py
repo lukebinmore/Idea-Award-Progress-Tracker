@@ -1,5 +1,6 @@
 from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtCore import QEvent
+from PySide6.QtWidgets import QStyledItemDelegate
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QVBoxLayout,
@@ -11,8 +12,21 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
+    QCompleter,
 )
 from IAPT.gui.icons.icons import *
+
+
+class CenterItemDelegate(QStyledItemDelegate):
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        option.displayAlignment = Qt.AlignmentFlag.AlignCenter
+
+
+class RightAlignedItemDelegate(QStyledItemDelegate):
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        option.displayAlignment = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
 
 
 class Component:
@@ -35,10 +49,12 @@ class Component:
         if layout:
             layout.addWidget(widget, stretch)
 
+        widget.kwargs = kwargs
+
 
 class Box(QWidget):
     def __init__(self, vertical=False, align="top", **kwargs):
-        super().__init__()
+        super().__init__(kwargs.pop("parent", None))
         Component.setup(self, **kwargs)
 
         self.setAttribute(Qt.WA_StyledBackground, True)
@@ -69,12 +85,15 @@ class Box(QWidget):
 
 class CollapsibleBox(Box):
     def __init__(self, icon=None, icon_size=None, **kwargs):
-        name = kwargs.get("name", "default")
-        layout = kwargs.get("layout")
         super().__init__(**kwargs)
 
         self.width_collapsed = False
-        self.collapsed_button = Button(layout=layout, icon=icon, icon_size=icon_size, name=name + "_collapsed_btn")
+        self.collapsed_button = Button(
+            layout=kwargs.get("layout", None),
+            icon=icon,
+            icon_size=icon_size,
+            name=kwargs.get("name", None) + "_collapsed_btn",
+        )
         self.collapsed_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
         self.collapsed_button.installEventFilter(self)
@@ -113,8 +132,10 @@ class Page(Box):
     page_title = "untitled_page"
     nav_btn_name = "untitled_btn"
 
-    def __init__(self, name="untitled_page"):
-        super().__init__(vertical=True, align="top", name=name)
+    def __init__(self, page_area=None, **kwargs):
+        super().__init__(vertical=True, **kwargs)
+
+        self.page_area = page_area
 
         Label(text=self.page_title, layout=self, variant="page_title")
 
@@ -135,20 +156,36 @@ class Label(QLabel):
 
         if align == "center":
             self.setAlignment(Qt.AlignCenter)
-        elif align == "left":
-            self.setAlignment(Qt.AlignLeft)
-        else:
+        elif align == "right":
             self.setAlignment(Qt.AlignRight)
+        else:
+            self.setAlignment(Qt.AlignLeft)
 
 
 class LineEdit(QLineEdit):
-    def __init__(self, **kwargs):
+    def __init__(self, read_only=False, suggestions=None, case_sensitive=False, align="center", **kwargs):
         super().__init__()
         Component.setup(self, **kwargs)
 
+        self.setReadOnly(read_only)
+
+        completer = QCompleter(suggestions)
+        completer.setCaseSensitivity(Qt.CaseSensitive if case_sensitive else Qt.CaseInsensitive)
+        completer.setCompletionMode(QCompleter.PopupCompletion)
+        completer.setFilterMode(Qt.MatchContains)
+        self.setCompleter(completer)
+
+        if align == "center":
+            self.setAlignment(Qt.AlignCenter)
+            completer.popup().setItemDelegate(CenterItemDelegate(completer.popup()))
+        elif align == "right":
+            self.setAlignment(Qt.AlignRight)
+            completer.popup().setItemDelegate(RightAlignedItemDelegate(completer.popup()))
+        else:
+            self.setAlignment(Qt.AlignLeft)
+
 
 class Table(QTableWidget):
-
     def __init__(self, columns, expandable=True, **kwargs):
         variant = kwargs.get("variant", None)
         super().__init__()
@@ -200,6 +237,7 @@ class Table(QTableWidget):
     def _cellClicked(self, row, column):
         if row in self.row_objects:
             self.row_objects[row].toggleOverview()
+            self.clearSelection()
 
 
 class TableRow:
@@ -225,6 +263,20 @@ class TableRow:
 
     def toggleOverview(self):
         self.table.setRowHidden(self.content_row, not self.table.isRowHidden(self.content_row))
+
+
+class ExpandingButton(Box):
+    def __init__(self, start_hidden=True, vertical=True, **kwargs):
+        super().__init__(vertical=True, **kwargs)
+
+        self.button = Button(layout=self, **self.kwargs)
+        self.content = Box(vertical=vertical, layout=self)
+        self.content.setHidden(start_hidden)
+
+        self.button.clicked.connect(self.toggleContent)
+
+    def toggleContent(self):
+        self.content.setHidden(not self.content.isHidden())
 
 
 class Header(Box):
@@ -303,7 +355,7 @@ class PageArea(Box):
 
         entry = self.history[self.current_index]
 
-        self.current_page = entry.page_class()
+        self.current_page = entry.page_class(page_area=self)
         self.addWidget(self.current_page, stretch=1)
         self.current_page.show()
         self.backAvailable.emit(self.current_index > 0)
@@ -331,3 +383,31 @@ class PageArea(Box):
             return
         self.current_index += 1
         self._loadPage()
+
+    def refreshPage(self):
+        print("page refreshing")
+        self._loadPage()
+        print("page refreshed")
+
+
+class NotificationArea(Box):
+    def __init__(self, parent):
+        super().__init__(parent=parent, vertical=True, name="notifications")
+
+        self.setFixedWidth(250)
+        self.raise_()
+        self.updateGeometry()
+
+    def updateGeometry(self):
+        margin = 10
+        self.setGeometry(
+            self.parent().width() - self.width() - margin, margin, self.width(), self.parent().height() - margin * 2
+        )
+
+    def addNotification(self, **kwargs):
+        Notification(layout=self, **kwargs)
+
+
+class Notification(Box):
+    def __init__(self, layout, **kwargs):
+        super().__init__(layout=layout, vertical=True)

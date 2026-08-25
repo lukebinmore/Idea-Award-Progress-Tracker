@@ -6,8 +6,8 @@ class StudentsPage(Page):
     page_title = "Students"
     nav_btn_name = "students_btn"
 
-    def __init__(self):
-        super().__init__(name="students_page")
+    def __init__(self, **kwargs):
+        super().__init__(name="students_page", **kwargs)
 
         columns = [
             ("ID", "id"),

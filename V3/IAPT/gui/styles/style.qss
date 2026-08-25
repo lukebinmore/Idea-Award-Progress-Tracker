@@ -11,6 +11,12 @@
 }
 /* #endregion */
 
+/* #region Notifications */
+#notifications {
+    background-color: orange;
+}
+/* #endregion */
+
 /* #region Header */
 #header {
     background-color: #1F5F3F;

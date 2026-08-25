@@ -2,6 +2,7 @@ import sqlite3
 from datetime import datetime
 from IAPT.core.config import DATABASE_PATH
 from IAPT.core.models import Student, Badge, Homework
+from IAPT.core.exceptions import IAPTError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -117,9 +118,8 @@ def upsert_students(students, class_name):
         )
 
         connection.commit()
-    except Exception:
-        logger.error_detail("Database updates failed", extra={"class_name": class_name, "student_count": len(students)})
-        raise
+    except Exception as error:
+        raise IAPTError(message="Failed to update students table in database", error=error, student_count=len(students))
     finally:
         if connection:
             connection.close()
@@ -132,9 +132,10 @@ def set_student_disabled(student_id, state):
         connection = get_connection()
         connection.execute("""UPDATE students SET manual_disable = ? WHERE student_id = ?""", (state, student_id))
         connection.commit()
-    except Exception:
-        logger.error_detail("Database updates failed", extra={"student_id": student_id})
-        raise
+    except Exception as error:
+        raise IAPTError(
+            message="Failed to update disabled status in students table in database", error=error, student_id=student_id
+        )
     finally:
         if connection:
             connection.close()
@@ -235,9 +236,8 @@ def upsert_results(results):
         )
 
         connection.commit()
-    except Exception:
-        logger.error_detail("Database updates failed", extra={"results_count": len(results)})
-        raise
+    except Exception as error:
+        raise IAPTError(message="Failed to update results table in database", error=error, results_count=len(results))
     finally:
         if connection:
             connection.close()
@@ -263,9 +263,10 @@ def upsert_schedule(homeworks):
         )
 
         connection.commit()
-    except Exception:
-        logger.error_detail("Database updates failed", extra={"homework_count": len(homeworks)})
-        raise
+    except Exception as error:
+        raise IAPTError(
+            message="Failed to update schedule table in database", error=error, homework_count=len(homeworks)
+        )
     finally:
         if connection:
             connection.close()
@@ -300,9 +301,8 @@ def read_students(student_ids=None):
             for row in rows
         ]
 
-    except Exception:
-        logger.error_detail("Failed to read students", extra={"student_ids": student_ids})
-        raise
+    except Exception as error:
+        raise IAPTError(message="Failed to read students table in database", error=error, student_ids=student_ids)
 
     finally:
         if connection:
@@ -345,9 +345,8 @@ def read_points(students):
 
         return students
 
-    except Exception:
-        logger.error_detail("Failed to read student points", extra={"student_count": len(students)})
-        raise
+    except Exception as error:
+        raise IAPTError(message="Failed to read points table in database", error=error, student_count=len(students))
 
     finally:
         if connection:
@@ -376,9 +375,8 @@ def read_badges(students):
 
         return students
 
-    except Exception:
-        logger.error_detail("Failed to read student badges", extra={"student_count": len(students)})
-        raise
+    except Exception as error:
+        raise IAPTError(message="Failed to read badges table in database", error=error, student_count=len(students))
 
     finally:
         if connection:
@@ -402,10 +400,27 @@ def read_homeworks():
             for row in rows
         ]
 
-    except Exception:
-        logger.error_detail("Failed to read homework schedule")
-        raise
+    except Exception as error:
+        raise IAPTError(message="Failed to read schedule table in database", error=error)
 
+    finally:
+        if connection:
+            connection.close()
+
+
+def read_class_names():
+    connection = None
+
+    try:
+        connection = get_connection()
+        rows = connection.execute(
+            """SELECT DISTINCT class_name FROM students WHERE class_name IS NOT NULL ORDER BY class_name"""
+        ).fetchall()
+
+        return [row["class_name"] for row in rows]
+
+    except Exception as error:
+        raise IAPTError(message="Failed to read students table in database", error=error)
     finally:
         if connection:
             connection.close()

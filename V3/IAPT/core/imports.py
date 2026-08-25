@@ -1,6 +1,7 @@
 from openpyxl import load_workbook
 from IAPT.core.config import load_config
-from IAPT.core.database import upsert_students, upsert_results, upsert_schedule, initialise_database
+from IAPT.core.database import upsert_students, upsert_results, upsert_schedule
+from IAPT.core.exceptions import IAPTError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,27 +13,28 @@ def read_excel_data(file_path, headers):
         worksheet = workbook.active
         rows = list(worksheet.iter_rows(values_only=True))
         workbook.close()
-    except FileNotFoundError:
-        logger.error_detail("File not found", extra={"file_path": file_path})
-        raise
+
+    except FileNotFoundError as error:
+        raise IAPTError(message="The selected file could not be found", error=error, file_path=file_path)
     except PermissionError:
-        logger.error_detail("Permission denied", extra={"file_path": file_path})
-        raise
-    except Exception:
-        logger.error_detail("Failed to read Excel file", extra={"file_path": file_path})
-        raise
+        raise IAPTError(
+            message="You do not have permission to open the selected file", error=error, file_path=file_path
+        )
+    except Exception as error:
+        logger.exception("Unknown error")
+        raise IAPTError(message="An Unknown Error has Occurred", error=error, file_path=file_path)
 
     if not rows:
-        logger.error_detail("No Data found in spreadsheet", extra={"file_path": file_path})
-        raise Exception()
+        raise IAPTError(message="No data was found in the selected spreadsheet", extra={"file_path", file_path})
 
     spreadsheet_headers = rows[0]
     indexes = []
 
     for header in headers:
         if header not in spreadsheet_headers:
-            logger.error_detail(f"Required Column not found", extra={"file_path": file_path, "column": header})
-            raise Exception()
+            raise IAPTError(
+                message="One or more required columns missing from the selected spreadsheet", file_path=file_path
+            )
 
         indexes.append(spreadsheet_headers.index(header))
 
@@ -53,7 +55,19 @@ def import_students(file_path, class_name):
         students = []
         for row_number, student in enumerate(data, start=2):
             if not student[config["student_id"]]:
-                logger.warning("Incomplete student data", extra={"row": row_number})
+                logger.warning(
+                    "Incomplete student data", extra={"row": row_number, "missing_data": config["student_id"]}
+                )
+                continue
+            if not student[config["first_name"]]:
+                logger.warning(
+                    "Incomplete student data", extra={"row": row_number, "missing_data": config["first_name"]}
+                )
+                continue
+            if not student[config["last_name"]]:
+                logger.warning(
+                    "Incomplete student data", extra={"row": row_number, "missing_data": config["last_name"]}
+                )
                 continue
 
             students.append(
@@ -67,8 +81,8 @@ def import_students(file_path, class_name):
         upsert_students(students, class_name)
 
         logger.success(f"{len(students)} students processed")
-    except Exception:
-        logger.error("Students import failed", extra={"file_path": file_path})
+    except IAPTError as error:
+        logger.error("Students import failed", extra={"error": error})
 
 
 def import_results(file_path):
@@ -99,8 +113,8 @@ def import_results(file_path):
         upsert_results(results)
 
         logger.success(f"{len(results)} results processed")
-    except Exception:
-        logger.error("Results import failed", extra={"file_path": file_path})
+    except IAPTError as error:
+        logger.error("Results import failed", extra={"error": error})
 
 
 def import_schedule(file_path):
@@ -126,5 +140,5 @@ def import_schedule(file_path):
         upsert_schedule(homeworks)
 
         logger.success(f"{len(homeworks)} homeworks processed")
-    except Exception:
-        logger.error("Schedule import failed", extra={"file_path": file_path})
+    except IAPTError as error:
+        logger.error("Schedule import failed", extra={"error": error})
