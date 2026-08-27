@@ -16,3 +16,6 @@ navigation_icon.addFile(str(ICON_ROOT / "navigation.svg"), mode=QIcon.Normal)
 
 filters_icon = QIcon()
 filters_icon.addFile(str(ICON_ROOT / "filters.svg"), mode=QIcon.Normal)
+
+close_icon = QIcon()
+close_icon.addFile(str(ICON_ROOT / "close.svg"), mode=QIcon.Normal)

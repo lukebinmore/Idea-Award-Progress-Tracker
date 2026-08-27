@@ -23,7 +23,7 @@ class MainWindow(QMainWindow):
         header = Header(layout=base)
 
         # Body
-        body = Box(layout=base, name="body")
+        body = Box(layout=base, name="body", stretch=1)
 
         # Navigation
         navigation = Navigation(layout=body, pages=NAV_PAGES)
@@ -60,4 +60,4 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.widthChanged.emit(self.width())
-        self.notifications.updateGeometry()
+        self.notifications.adjustPos()

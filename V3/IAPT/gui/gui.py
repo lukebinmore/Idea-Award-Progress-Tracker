@@ -1,7 +1,8 @@
 import sys
-from PySide6.QtWidgets import QApplication, QWidget
+from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QFileSystemWatcher
 from IAPT.gui.main_window import MainWindow
+from IAPT.gui.styles.stylesheet import build_stylesheet
 from IAPT.core.config import PACKAGE_ROOT
 import logging
 
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 def reload_stylesheet(app, stylesheet_path):
     with stylesheet_path.open("r", encoding="utf-8") as file:
-        app.setStyleSheet(file.read())
+        app.setStyleSheet(build_stylesheet(file.read()))
 
 
 def start_gui():

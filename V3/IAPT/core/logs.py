@@ -25,22 +25,20 @@ class LogFormatter(logging.Formatter):
             else:
                 message += f"\n    - Message: {record.error.message}"
 
+            if record.error.error_data:
+                for key, value in record.error.error_data.items():
+                    message += f"\n    - {key}: {value}"
+
         return message
 
 
 class NotificationHandler(logging.Handler):
+    def __init__(self, notification_area):
+        super().__init__()
+        self.notification_area = notification_area
+
     def emit(self, record):
-        if record.levelno >= logging.WARNING or record.levelno == SUCCESS:
-            print("GUI NOTIFICATION:")
-            print(f"  Level: {record.levelname}")
-            print(f"  Message: {record.msg}")
-
-            if hasattr(record, "error"):
-                print(f"  User message: {record.error.message}")
-                print(f"  Details: {record.error.details}")
-                print(f"  File: {record.error.file_path}")
-
-            print()
+        self.notification_area.addNotification(record)
 
 
 def initialise_logging():
@@ -54,9 +52,10 @@ def initialise_logging():
     file_handler.setLevel(getattr(logging, config["log_level"]))
     root_logger.addHandler(file_handler)
 
-    notification_handler = NotificationHandler()
-    notification_handler.setLevel(logging.WARNING)
-    root_logger.addHandler(notification_handler)
+    logs = sorted(LOGS_DIR.glob("*.log"), key=lambda path: path.stat().st_mtime)
+    if len(logs) > 30:
+        for log in logs[:-30]:
+            log.unlink()
 
     formatter = LogFormatter("[%(asctime)s] %(levelname)s [%(name)s]: %(message)s", datefmt="%H:%M:%S")
     file_handler.setFormatter(formatter)

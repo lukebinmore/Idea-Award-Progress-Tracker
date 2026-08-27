@@ -1,7 +1,9 @@
-from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtCore import QEvent
-from PySide6.QtWidgets import QStyledItemDelegate
+from IAPT.core.logs import NotificationHandler
+import logging
+from PySide6.QtCore import Qt, Signal, QSize, QEvent, QTimer
+from PySide6.QtGui import QColor, QPainterPath, QRegion, QPen
 from PySide6.QtWidgets import (
+    QStyledItemDelegate,
     QHBoxLayout,
     QVBoxLayout,
     QLabel,
@@ -13,8 +15,12 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
     QCompleter,
+    QProgressBar,
 )
 from IAPT.gui.icons.icons import *
+from IAPT.gui.styles.stylesheet import COLOURS, RADIUS
+from IAPT.gui.quotes import QUOTES
+import random
 
 
 class CenterItemDelegate(QStyledItemDelegate):
@@ -29,6 +35,21 @@ class RightAlignedItemDelegate(QStyledItemDelegate):
         option.displayAlignment = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
 
 
+class TableDelegate(QStyledItemDelegate):
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+
+        if index.row() == self.parent().hovered_row:
+            painter.save()
+            painter.fillRect(option.rect, QColor(255, 255, 255, 20))
+            painter.restore()
+
+        painter.save()
+        painter.setPen(QPen(QColor(COLOURS["border_secondary"]), 2))
+        painter.drawLine(option.rect.bottomLeft(), option.rect.bottomRight())
+        painter.restore()
+
+
 class Component:
     @staticmethod
     def setup(widget, **kwargs):
@@ -37,30 +58,31 @@ class Component:
         variant = kwargs.pop("variant", None)
         stretch = kwargs.pop("stretch", 0)
         enabled = kwargs.pop("enabled", True)
+        height = kwargs.pop("height", None)
+        width = kwargs.pop("width", None)
 
-        if name:
-            widget.setObjectName(name)
-
-        if variant:
-            widget.setProperty("variant", variant)
-
+        widget.setObjectName(name) if name else None
+        widget.setProperty("variant", variant) if variant else None
         widget.setEnabled(enabled)
-
-        if layout:
-            layout.addWidget(widget, stretch)
+        widget.setFixedHeight(height) if height else None
+        widget.setFixedWidth(width) if width else None
+        layout.addWidget(widget, stretch) if layout else None
 
         widget.kwargs = kwargs
 
 
 class Box(QWidget):
-    def __init__(self, vertical=False, align="top", **kwargs):
+    def __init__(self, vertical=False, align="top", overflow=True, spacing=0, margins=(0, 0, 0, 0), **kwargs):
         super().__init__(kwargs.pop("parent", None))
         Component.setup(self, **kwargs)
 
+        self.overflow = overflow
+        self.radius = int(RADIUS["standard"][:-2])
+
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.layout = QVBoxLayout(self) if vertical else QHBoxLayout(self)
-        self.setMargins(0, 0, 0, 0)
-        self.setSpacing(0)
+        self.setMargins(*margins)
+        self.setSpacing(spacing)
 
         if align == "left":
             self.layout.setAlignment(Qt.AlignLeft)
@@ -82,19 +104,42 @@ class Box(QWidget):
     def setSpacing(self, spacing):
         self.layout.setSpacing(spacing)
 
+    def updateMask(self):
+        if self.overflow:
+            self.clearMask()
+            return
+
+        path = QPainterPath()
+        path.addRoundedRect(self.rect(), self.radius, self.radius)
+        self.setMask(QRegion(path.toFillPolygon().toPolygon()))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if not self.overflow:
+            self.updateMask()
+
 
 class CollapsibleBox(Box):
-    def __init__(self, icon=None, icon_size=None, **kwargs):
+    def __init__(self, content=None, text=None, icon=None, icon_size=None, button_vert=True, collapsed=False, **kwargs):
         super().__init__(**kwargs)
 
-        self.width_collapsed = False
+        self.collapsed = collapsed
         self.collapsed_button = Button(
-            layout=kwargs.get("layout", None),
+            layout=self,
+            text=text,
             icon=icon,
             icon_size=icon_size,
-            name=kwargs.get("name", None) + "_collapsed_btn",
+            name=kwargs.get("name", "") + "_collapsed_btn",
         )
-        self.collapsed_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+
+        if button_vert:
+            self.collapsed_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        else:
+            self.collapsed_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+
+        self.content = content
+        self.addWidget(content)
+        self.setCollapsed(self.collapsed)
 
         self.collapsed_button.installEventFilter(self)
         self.window().installEventFilter(self)
@@ -102,22 +147,22 @@ class CollapsibleBox(Box):
 
     def setCollapsed(self, collapsed):
         if collapsed:
-            self.hide()
+            self.content.hide()
             self.collapsed_button.show()
         else:
-            self.show()
+            self.content.show()
             self.collapsed_button.hide()
 
     def checkWidth(self, width):
         if width < 700:
-            self.width_collapsed = True
+            self.collapsed = True
             self.setCollapsed(True)
         else:
-            self.width_collapsed = False
+            self.collapsed = False
             self.setCollapsed(False)
 
     def eventFilter(self, watched, event):
-        if self.width_collapsed:
+        if self.collapsed:
             if watched == self.collapsed_button:
                 if event.type() == QEvent.Enter:
                     self.setCollapsed(False)
@@ -133,11 +178,11 @@ class Page(Box):
     nav_btn_name = "untitled_btn"
 
     def __init__(self, page_area=None, **kwargs):
-        super().__init__(vertical=True, **kwargs)
+        super().__init__(vertical=True, spacing=5, **kwargs)
 
         self.page_area = page_area
 
-        Label(text=self.page_title, layout=self, variant="page_title")
+        Label(text=self.page_title, layout=self, name="page_title")
 
 
 class Button(QPushButton):
@@ -150,9 +195,11 @@ class Button(QPushButton):
 
 
 class Label(QLabel):
-    def __init__(self, text="", align="center", **kwargs):
+    def __init__(self, text="", align="center", wrap=True, **kwargs):
         super().__init__(text)
         Component.setup(self, **kwargs)
+
+        self.setWordWrap(wrap)
 
         if align == "center":
             self.setAlignment(Qt.AlignCenter)
@@ -160,6 +207,8 @@ class Label(QLabel):
             self.setAlignment(Qt.AlignRight)
         else:
             self.setAlignment(Qt.AlignLeft)
+
+        self.adjustSize()
 
 
 class LineEdit(QLineEdit):
@@ -185,14 +234,29 @@ class LineEdit(QLineEdit):
             self.setAlignment(Qt.AlignLeft)
 
 
+class ProgressBar(QProgressBar):
+    def __init__(self, range=(0, 1), start_value=0, show_text=False, **kwargs):
+        super().__init__()
+        Component().setup(self, **kwargs)
+
+        self.setRange(*range)
+        self.setValue(start_value)
+        self.setTextVisible(show_text)
+
+
 class Table(QTableWidget):
     def __init__(self, columns, expandable=True, **kwargs):
-        variant = kwargs.get("variant", None)
         super().__init__()
         Component.setup(self, **kwargs)
 
         self.row_objects = {}
+        self.hovered_row = -1
+
+        self.viewport().setMouseTracking(True)
+        self.viewport().installEventFilter(self)
+
         self.expandable = expandable
+        self.setItemDelegate(TableDelegate(self))
 
         self.verticalHeader().setVisible(False)
         self.setSelectionBehavior(QTableWidget.SelectRows)
@@ -202,9 +266,20 @@ class Table(QTableWidget):
         self.setHorizontalHeaderLabels([name for name, attribute in columns])
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
-        self.horizontalHeader().setProperty("variant", variant) if variant else None
 
         self.cellClicked.connect(self._cellClicked) if self.expandable else None
+
+    def eventFilter(self, watched, event):
+        if watched is self.viewport() and event.type() == QEvent.MouseMove:
+            index = self.indexAt(event.position().toPoint())
+            self.hovered_row = index.row()
+            self.viewport().update()
+
+        elif event.type() == QEvent.Leave:
+            self.hovered_row = -1
+            self.viewport().update()
+
+        return super().eventFilter(watched, event)
 
     def sizeColumns(self):
         available_width = self.viewport().width()
@@ -237,11 +312,11 @@ class Table(QTableWidget):
     def _cellClicked(self, row, column):
         if row in self.row_objects:
             self.row_objects[row].toggleOverview()
-            self.clearSelection()
+        self.clearSelection()
 
 
 class TableRow:
-    def __init__(self, table, columns, data):
+    def __init__(self, table, columns, data, row_colour=None):
         self.table = table
 
         self.summary_row = table.rowCount()
@@ -251,15 +326,17 @@ class TableRow:
             value = getattr(data, attribute)
             item = QTableWidgetItem(str(value))
             item.setTextAlignment(Qt.AlignCenter)
+            item.setForeground(QColor(row_colour)) if row_colour else None
             table.setItem(self.summary_row, column, item)
 
         if self.table.expandable:
             self.content_row = table.rowCount()
             table.insertRow(self.content_row)
             table.setSpan(self.content_row, 0, 1, len(columns))
-            self.content = QWidget()
+            self.content = Box(vertocal=True, height=100, margins=(20, 0, 20, 20))
             table.setCellWidget(self.content_row, 0, self.content)
             table.setRowHidden(self.content_row, True)
+            self.table.resizeRowToContents(self.content_row)
 
     def toggleOverview(self):
         self.table.setRowHidden(self.content_row, not self.table.isRowHidden(self.content_row))
@@ -270,7 +347,7 @@ class ExpandingButton(Box):
         super().__init__(vertical=True, **kwargs)
 
         self.button = Button(layout=self, **self.kwargs)
-        self.content = Box(vertical=vertical, layout=self)
+        self.content = Box(vertical=vertical, layout=self, name=kwargs.get("name", "") + "_content")
         self.content.setHidden(start_hidden)
 
         self.button.clicked.connect(self.toggleContent)
@@ -281,7 +358,7 @@ class ExpandingButton(Box):
 
 class Header(Box):
     def __init__(self, layout):
-        super().__init__(layout=layout, name="header")
+        super().__init__(layout=layout, name="header", margins=(10, 5, 10, 5))
 
         self.back_button = Button(layout=self, name="back_btn", icon=back_icon, icon_size=(30, 30), enabled=False)
         self.program_title = Label(text="Idea Award Progress Tracker", layout=self, name="program_title", stretch=1)
@@ -294,41 +371,42 @@ class Footer(Box):
     def __init__(self, layout):
         super().__init__(layout=layout, name="footer")
 
-        quote = Label(text="Fun quotes go here", layout=self, name="quote")
+        quote = random.choice(QUOTES)
+
+        Label(text=quote, layout=self, name="quote")
 
 
 class Navigation(CollapsibleBox):
     pageSelected = Signal(object)
 
     def __init__(self, layout, pages):
-        super().__init__(vertical=True, layout=layout, name="navigation", icon=navigation_icon)
+        self.content = Box(vertical=True, width=150, spacing=5, margins=(0, 10, 0, 10))
+        super().__init__(layout=layout, content=self.content, name="navigation", icon=navigation_icon)
 
         self.navigation_buttons = {}
-        self.setFixedWidth(150)
 
-        Label(text="Navigation", layout=self, name="navigation_label")
+        Label(text="Navigation", layout=self.content, name="navigation_label")
 
         for page in pages:
-            button = Button(text=page.page_title, layout=self, name=page.nav_btn_name, variant="navigation_btn")
+            button = Button(text=page.page_title, layout=self.content, name=page.nav_btn_name)
             button.clicked.connect(lambda checked=False, page=page: self.pageSelected.emit(page))
             self.navigation_buttons[page.nav_btn_name] = button
 
 
 class Search(Box):
     def __init__(self, layout):
-        super().__init__(layout=layout, name="search")
+        super().__init__(layout=layout, name="search", margins=(10, 0, 0, 0))
 
         search_label = Label(text="Search:", layout=self, name="search_label")
-        self.search_box = LineEdit(layout=self, stretch=1, name="searchbox")
+        self.search_box = LineEdit(layout=self, stretch=1, name="searchbox", align="left")
 
 
 class Filters(CollapsibleBox):
     def __init__(self, layout):
-        super().__init__(vertical=True, layout=layout, name="filters", icon=filters_icon)
+        self.content = Box(vertical=True, width=150, margins=(0, 10, 0, 10))
+        super().__init__(layout=layout, content=self.content, name="filters", icon=filters_icon)
 
-        self.setFixedWidth(150)
-
-        Label(text="Testing", layout=self, name="filters_label")
+        Label(text="Testing", layout=self.content, name="filters_label")
 
 
 class PageEntry:
@@ -343,7 +421,9 @@ class PageArea(Box):
     forwardAvailable = Signal(bool)
 
     def __init__(self, layout):
-        super().__init__(vertical=True, layout=layout, name="page_area", stretch=1)
+        super().__init__(
+            vertical=True, layout=layout, overflow=False, name="page_area", stretch=1, margins=(10, 10, 10, 10)
+        )
 
         self.history = []
         self.current_index = -1
@@ -385,29 +465,73 @@ class PageArea(Box):
         self._loadPage()
 
     def refreshPage(self):
-        print("page refreshing")
         self._loadPage()
-        print("page refreshed")
 
 
 class NotificationArea(Box):
     def __init__(self, parent):
-        super().__init__(parent=parent, vertical=True, name="notifications")
+        super().__init__(parent=parent, vertical=True, name="notifications", width=250, align="right")
 
-        self.setFixedWidth(250)
         self.raise_()
-        self.updateGeometry()
 
-    def updateGeometry(self):
         margin = 10
-        self.setGeometry(
-            self.parent().width() - self.width() - margin, margin, self.width(), self.parent().height() - margin * 2
-        )
+        self.move(self.parent().width() - self.width() - margin, margin)
 
-    def addNotification(self, **kwargs):
-        Notification(layout=self, **kwargs)
+        self.notification_handler = NotificationHandler(self)
+        self.notification_handler.setLevel(logging.WARNING)
+        logging.getLogger().addHandler(self.notification_handler)
+
+    def addNotification(self, record):
+        Notification(self, record)
+
+    def event(self, event):
+        if event.type() == QEvent.LayoutRequest:
+            self.adjustPos()
+        return super().event(event)
+
+    def adjustPos(self):
+        self.adjustSize()
+        margin = 10
+        self.move(self.parent().width() - self.width() - margin, margin)
 
 
 class Notification(Box):
-    def __init__(self, layout, **kwargs):
-        super().__init__(layout=layout, vertical=True)
+    def __init__(self, layout, record):
+        super().__init__(layout=layout, vertical=True, spacing=5, margins=(5, 5, 5, 5))
+
+        title = record.getMessage()
+        level = record.levelname
+
+        self.setProperty("variant", level)
+
+        header = Box(layout=self, variant="notification_header")
+        title = Label(layout=header, text=title, stretch=1, align="left")
+        close_btn = Button(layout=header, icon=close_icon, icon_size=(20, 20))
+        close_btn.clicked.connect(self.deleteLater)
+
+        if level == "SUCCESS":
+            self.startTimer(3000)
+        else:
+            if record.error:
+                content = Box(vertical=True, layout=self, spacing=7, margins=(0, 0, 0, 5))
+                Label(text=record.error.message, layout=content)
+                if record.error.error_data:
+                    for key, value in record.error.error_data.items():
+                        key = key.replace("_", " ").title()
+                        Label(text=f"{key}: {value}", layout=content)
+
+    def startTimer(self, duration):
+        self.progress = ProgressBar(layout=self, range=(0, duration), start_value=duration, height=3)
+
+        self.timer = QTimer(self)
+        self.timer.setInterval(50)
+        self.timer.timeout.connect(self.updateTimer)
+        self.timer.start()
+
+    def updateTimer(self):
+        value = self.progress.value() - 50
+        self.progress.setValue(value)
+
+        if value <= 0:
+            self.timer.stop()
+            self.deleteLater()

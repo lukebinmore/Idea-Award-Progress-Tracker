@@ -2,6 +2,7 @@ from IAPT.gui.components import Page, Button, ExpandingButton, LineEdit, Label
 from IAPT.core.imports import import_results, import_schedule, import_students
 from IAPT.core.database import read_class_names
 from PySide6.QtWidgets import QFileDialog
+from pathlib import Path
 
 
 class ImportPage(Page):
@@ -18,14 +19,19 @@ class ImportPage(Page):
         self.schedule_btn.clicked.connect(self.import_schedule)
 
         self.students = ExpandingButton(text="Import Students", layout=self, name="import_students_btn", vertical=True)
-        Label(text="Please enter the class name")
+        self.students.content.setMargins(0, 5, 0, 5)
+        self.students.content.setSpacing(15)
+        Label(text="Please enter the class name:", layout=self.students.content)
         self.students_class = LineEdit(suggestions=read_class_names(), layout=self.students.content)
         self.students_class.textChanged.connect(self.update_students_btn)
         self.students_btn = Button(text="import Students", layout=self.students.content, enabled=False)
         self.students_btn.clicked.connect(self.import_students)
 
     def select_excel_file(self, file_type):
-        file_path, _ = QFileDialog.getOpenFileName(self, f"Select {file_type} file", "", "Excel Files (*.xlsx *.xls)")
+        downloads = Path.home() / "Downloads"
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, f"Select {file_type} file", str(downloads), "Excel Files (*.xlsx *.xls)"
+        )
         if not file_path:
             return None
         return file_path
@@ -37,17 +43,20 @@ class ImportPage(Page):
             return
 
         import_results(file_path)
+        self.page_area.refreshPage()
 
     def import_schedule(self):
         file_path = self.select_excel_file("schedule")
-        file_path = file_path.split("/")
-        file_path[2] = "testing"
-        file_path = "/".join(file_path)
 
         if not file_path:
             return
 
+        file_path = file_path.split("/")
+        file_path[2] = "testing"
+        file_path = "/".join(file_path)
+
         import_schedule(file_path)
+        self.page_area.refreshPage()
 
     def update_students_btn(self, text):
         self.students_btn.setEnabled(bool(text.strip()))
@@ -60,3 +69,4 @@ class ImportPage(Page):
 
         class_name = self.students_class.text().strip()
         import_students(file_path, class_name)
+        self.page_area.refreshPage()

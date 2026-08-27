@@ -32,9 +32,7 @@ def read_excel_data(file_path, headers):
 
     for header in headers:
         if header not in spreadsheet_headers:
-            raise IAPTError(
-                message="One or more required columns missing from the selected spreadsheet", file_path=file_path
-            )
+            raise IAPTError(message=f"{header} missing from the selected spreadsheet", file_path=file_path)
 
         indexes.append(spreadsheet_headers.index(header))
 
@@ -54,29 +52,13 @@ def import_students(file_path, class_name):
 
         students = []
         for row_number, student in enumerate(data, start=2):
-            if not student[config["student_id"]]:
-                logger.warning(
-                    "Incomplete student data", extra={"row": row_number, "missing_data": config["student_id"]}
-                )
-                continue
-            if not student[config["first_name"]]:
-                logger.warning(
-                    "Incomplete student data", extra={"row": row_number, "missing_data": config["first_name"]}
-                )
-                continue
-            if not student[config["last_name"]]:
-                logger.warning(
-                    "Incomplete student data", extra={"row": row_number, "missing_data": config["last_name"]}
-                )
-                continue
+            for field in config.values():
+                if not student[field]:
+                    error = IAPTError(message=f"Row {row_number} missing {field}")
+                    logger.warning("Incomplete student data", extra={"error": error})
+                    continue
 
-            students.append(
-                {
-                    "student_id": student[config["student_id"]],
-                    "first_name": student[config["first_name"]],
-                    "last_name": student[config["last_name"]],
-                }
-            )
+            students.append({key: student[field] for key, field in config.items()})
 
         upsert_students(students, class_name)
 
