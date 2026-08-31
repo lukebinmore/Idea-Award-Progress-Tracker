@@ -28,6 +28,7 @@ COLOURS = {
     "silver": "#8F9AA3",
     "outstanding": "#FF6B6B",
     "late": "#FFC857",
+    "missing": "#9B59B6",
 }
 
 FONT_SIZES = {
@@ -35,6 +36,7 @@ FONT_SIZES = {
     "table_header": "14px",
     "notification_label": "15px",
     "heading": "16px",
+    "subheading": "15px",
     "program_title": "25px",
 }
 

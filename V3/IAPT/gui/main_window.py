@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QMainWindow
 from PySide6.QtCore import Signal
-from IAPT.gui.components import Box, Header, Footer, Navigation, Search, Filters, PageArea, NotificationArea
+from IAPT.gui.components import Box, Header, Footer, Navigation, Search, PageArea, NotificationArea
 from IAPT.gui.page_registry import NAV_PAGES
 from IAPT.gui.pages.students import StudentsPage
 
@@ -34,13 +34,8 @@ class MainWindow(QMainWindow):
         # Search
         search = Search(layout=content)
 
-        main_content = Box(layout=content, name="main_content")
-
         # Main Page Content
-        page_area = PageArea(layout=main_content)
-
-        # Filters
-        filters = Filters(layout=main_content)
+        page_area = PageArea(layout=content)
 
         # Footer
         Footer(layout=base)
@@ -53,7 +48,7 @@ class MainWindow(QMainWindow):
         navigation.pageSelected.connect(page_area.showPage)
         self.widthChanged.connect(navigation.checkWidth)
 
-        self.widthChanged.connect(filters.checkWidth)
+        self.widthChanged.connect(lambda _: page_area.handleResize(self.width()))
 
         page_area.showPage(StudentsPage)
 

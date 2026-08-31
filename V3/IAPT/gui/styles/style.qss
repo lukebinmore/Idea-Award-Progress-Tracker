@@ -2,25 +2,17 @@
     [[global:global]]
 }
 
-/* #region Filters & Sort */
+/* #region Filters */
 #filters {
     [[classes:side_menu]];
     border-top-left-radius: [[radius:standard]];
     border-bottom-left-radius: [[radius:standard]];
 }
 
-#filters_collapsed_btn {
+#filters > QPushButton {
     [[classes:nav_collapsed_btn]];
     border-top-left-radius: [[radius:standard]];
     border-bottom-left-radius: [[radius:standard]];
-}
-
-#filters_collapsed_btn:hover {
-    [[classes:nav_collapsed_btn_hover]];
-}
-
-#filters_collapsed_btn:pressed {
-    [[classes:nav_collapsed_btn_pressed]];
 }
 
 #filters_label {
@@ -28,16 +20,53 @@
     [[classes:heading]]
 }
 
-#filters QPushButton {
+#filters > QWidget QPushButton {
     [[classes:standard_btn]];
 }
 
-#filters QPushButton:hover {
+#filters > QWidget QPushButton:hover {
     [[classes:standard_btn_hover]];
 }
 
-#filters QPushButton:pressed {
+#filters > QWidget QPushButton:pressed {
     [[classes:standard_btn_pressed]];
+}
+
+#filters QLabel[variant="subheading"] {
+    background-color: [[colours:accent]];
+    font-size: [[font_sizes:subheading]];
+    font-weight: bold;
+    padding: 5px;
+}
+
+#filters QComboBox {
+    padding: 5px 5px 5px 10px;
+    background-color: [[colours:secondary]];
+}
+
+#filters QComboBox:hover {
+    background-color: [[colours:secondary_highlight]];
+}
+
+#filters QCheckBox {
+    padding: 5px;
+    background-color: [[colours:secondary]];
+}
+
+#filters QCheckBox::indicator {
+    background-color: [[colours:secondary]];
+    width: 18px;
+    height: 18px;
+    border: [[borders:standard]] [[colours:border_primary]];
+    border-radius: 10px;
+}
+
+#filters QCheckBox:hover, #filters QCheckBox::indicator:hover, #filters QCheckBox::indicator:checked {
+    background-color: [[colours:secondary_highlight]];
+}
+
+#filters QCheckBox::indicator:checked {
+    background-color: [[colours:error]];
 }
 /* #endregion */
 
@@ -49,7 +78,7 @@
 /* #endregion */
 
 /* #region General Pages */
-#page_area {
+#main_content {
     margin: 10px;
     border-radius: [[radius:standard]];
     background-color: [[colours:background_secondary]];
@@ -62,34 +91,33 @@
     border-top-right-radius: [[radius:standard]];
 }
 
-#page_area QTableWidget {
-    border-bottom-left-radius: [[radius:standard]];
-    border-bottom-right-radius: [[radius:standard]];
+#main_content QTableWidget {
+    border-radius: [[radius:standard]];
 }
 
-#page_area QTableWidget::item:hover {
+#main_content QTableWidget::item {
     background-color: transparent;
 }
 
-#page_area QHeaderView {
+#main_content QHeaderView {
     font-weight: bold;
     font-size: [[font_sizes:table_header]];
     background-color: [[colours:accent]];
 }
 
-#page_area QPushButton {
+#main_content QPushButton {
     [[classes:standard_btn]];
 }
 
-#page_area QPushButton:hover {
+#main_content QPushButton:hover {
     [[classes:standard_btn_hover]];
 }
 
-#page_area QPushButton:pressed {
+#main_content QPushButton:pressed {
     [[classes:standard_btn_pressed]];
 }
 
-#page_area QPushButton:disabled {
+#main_content QPushButton:disabled {
     [[classes:standard_btn_disabled]];
 }
 /* #endregion */
@@ -147,18 +175,10 @@
     border-bottom-right-radius: [[radius:standard]];
 }
 
-#navigation_collapsed_btn {
+#navigation > QPushButton {
     [[classes:nav_collapsed_btn]];
     border-top-right-radius: [[radius:standard]];
     border-bottom-right-radius: [[radius:standard]];
-}
-
-#navigation_collapsed_btn:hover {
-    [[classes:nav_collapsed_btn_hover]];
-}
-
-#navigation_collapsed_btn:pressed {
-    [[classes:nav_collapsed_btn_pressed]];
 }
 
 #navigation_label {
@@ -166,15 +186,15 @@
     [[classes:heading]]
 }
 
-#navigation QPushButton {
+#navigation > QWidget QPushButton {
     [[classes:standard_btn]];
 }
 
-#navigation QPushButton:hover {
+#navigation > QWidget QPushButton:hover {
     [[classes:standard_btn_hover]];
 }
 
-#navigation QPushButton:pressed {
+#navigation > QWidget QPushButton:pressed {
     [[classes:standard_btn_pressed]];
 }
 /* #endregion */

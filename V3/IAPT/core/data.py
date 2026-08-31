@@ -19,3 +19,9 @@ def get_students(student_ids=None):
     students = calculate_award_status(students)
 
     return students
+
+
+def get_classes():
+    students = get_students()
+    classes = {student.classname for student in students if student.classname}
+    return sorted(classes)

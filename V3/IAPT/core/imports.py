@@ -52,11 +52,15 @@ def import_students(file_path, class_name):
 
         students = []
         for row_number, student in enumerate(data, start=2):
+            data_issue = False
             for field in config.values():
                 if not student[field]:
                     error = IAPTError(message=f"Row {row_number} missing {field}")
                     logger.warning("Incomplete student data", extra={"error": error})
-                    continue
+                    data_issue = True
+
+            if data_issue:
+                continue
 
             students.append({key: student[field] for key, field in config.items()})
 

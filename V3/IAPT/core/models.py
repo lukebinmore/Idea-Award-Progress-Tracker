@@ -36,11 +36,17 @@ class Student:
     bronze_awarded: bool = False
     silver_awarded: bool = False
 
+    def __eq__(self, other):
+        return isinstance(other, Student) and self.id == other.id
+
 
 @dataclass
 class Badge:
     name: str
     completed_date: date
+
+    def __eq__(self, other):
+        return isinstance(other, Badge) and self.name == other.name
 
 
 @dataclass
@@ -49,3 +55,6 @@ class Homework:
     category: str
     points: int
     due_date: date
+
+    def __eq__(self, other):
+        return isinstance(other, Homework) and self.badge_name == other.badge_name

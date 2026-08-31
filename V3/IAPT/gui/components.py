@@ -16,6 +16,10 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QCompleter,
     QProgressBar,
+    QCheckBox,
+    QComboBox,
+    QScrollArea,
+    QFrame,
 )
 from IAPT.gui.icons.icons import *
 from IAPT.gui.styles.stylesheet import COLOURS, RADIUS
@@ -109,8 +113,16 @@ class Box(QWidget):
             self.clearMask()
             return
 
+        margins = self.layout.contentsMargins()
+        rect = self.rect().adjusted(
+            margins.left(),
+            margins.top(),
+            -margins.right(),
+            -margins.bottom(),
+        )
+
         path = QPainterPath()
-        path.addRoundedRect(self.rect(), self.radius, self.radius)
+        path.addRoundedRect(rect, self.radius, self.radius)
         self.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
     def resizeEvent(self, event):
@@ -119,26 +131,57 @@ class Box(QWidget):
             self.updateMask()
 
 
+class ScrollBox(Box):
+    def __init__(self, vertical=False, layout=None, **kwargs):
+        super().__init__(vertical=vertical, **kwargs)
+
+        scroll = QScrollArea(layout)
+        scroll.setWidget(self)
+        scroll.setWidgetResizable(True)
+
+        if vertical:
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        else:
+            scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        scroll.setFrameShape(QFrame.NoFrame)
+        layout.addWidget(scroll) if layout else None
+
+    def clear(self):
+        while self.layout.count():
+            item = self.layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
+
 class CollapsibleBox(Box):
-    def __init__(self, content=None, text=None, icon=None, icon_size=None, button_vert=True, collapsed=False, **kwargs):
+    def __init__(
+        self,
+        text=None,
+        icon=None,
+        icon_size=None,
+        button_vert=True,
+        collapsed=False,
+        vertical=True,
+        width=150,
+        spacing=5,
+        margins=(0, 10, 0, 10),
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
         self.collapsed = collapsed
-        self.collapsed_button = Button(
-            layout=self,
-            text=text,
-            icon=icon,
-            icon_size=icon_size,
-            name=kwargs.get("name", "") + "_collapsed_btn",
-        )
+        self.collapsed_button = Button(layout=self, text=text, icon=icon, icon_size=icon_size)
 
         if button_vert:
             self.collapsed_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         else:
             self.collapsed_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
-        self.content = content
-        self.addWidget(content)
+        self.content = Box(vertical=vertical, layout=self, width=width, spacing=spacing, margins=margins)
         self.setCollapsed(self.collapsed)
 
         self.collapsed_button.installEventFilter(self)
@@ -176,13 +219,34 @@ class CollapsibleBox(Box):
 class Page(Box):
     page_title = "untitled_page"
     nav_btn_name = "untitled_btn"
+    filters = False
 
     def __init__(self, page_area=None, **kwargs):
-        super().__init__(vertical=True, spacing=5, **kwargs)
-
+        super().__init__(stretch=1, **kwargs)
         self.page_area = page_area
+        self.controls = []
+        self.state = {}
 
-        Label(text=self.page_title, layout=self, name="page_title")
+        self.page = Box(
+            vertical=True, layout=self, name="main_content", overflow=False, spacing=5, margins=(10, 10, 10, 10)
+        )
+        self.page_header = Label(layout=self.page, name="page_title")
+
+        self.content = ScrollBox(layout=self.page, vertical=True, spacing=5)
+        self.content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        if self.filters:
+            self.filters_container = CollapsibleBox(layout=self, spacing=5, name="filters", icon=filters_icon)
+            Label(text="Filters", name="filters_label", layout=self.filters_container.content)
+            self.filters = self.filters_container.content
+
+    def drawPage(self):
+        self.content.clear()
+
+        if self.filters:
+            for widget in self.controls:
+                widget.deleteLater()
+            self.controls = []
 
 
 class Button(QPushButton):
@@ -234,6 +298,40 @@ class LineEdit(QLineEdit):
             self.setAlignment(Qt.AlignLeft)
 
 
+class CheckBox(QCheckBox):
+    def __init__(self, text="", text_align="left", box_align="right", default=False, vertical=False, size=18, **kwargs):
+        super().__init__()
+        Component.setup(self, **kwargs)
+
+        self.setChecked(default)
+        layout = QVBoxLayout(self) if vertical else QHBoxLayout(self)
+        Label(text=text, align=text_align, layout=layout)
+
+        if box_align == "left":
+            self.setLayoutDirection(Qt.LeftToRight)
+            layout.setContentsMargins(35, 5, 10, 5)
+        else:
+            self.setLayoutDirection(Qt.RightToLeft)
+            layout.setContentsMargins(10, 5, 35, 5)
+
+    def hitButton(self, pos):
+        return self.contentsRect().contains(pos)
+
+
+class ComboBox(QComboBox):
+    def __init__(self, options=None, default=None, **kwargs):
+        super().__init__()
+        Component.setup(self, **kwargs)
+
+        if options:
+            for label, key in options:
+                self.addItem(label, key)
+
+        if default:
+            target = self.findData(default)
+            self.setCurrentIndex(target) if target >= 0 else None
+
+
 class ProgressBar(QProgressBar):
     def __init__(self, range=(0, 1), start_value=0, show_text=False, **kwargs):
         super().__init__()
@@ -266,7 +364,6 @@ class Table(QTableWidget):
         self.setHorizontalHeaderLabels([name for name, attribute in columns])
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
-
         self.cellClicked.connect(self._cellClicked) if self.expandable else None
 
     def eventFilter(self, watched, event):
@@ -380,8 +477,7 @@ class Navigation(CollapsibleBox):
     pageSelected = Signal(object)
 
     def __init__(self, layout, pages):
-        self.content = Box(vertical=True, width=150, spacing=5, margins=(0, 10, 0, 10))
-        super().__init__(layout=layout, content=self.content, name="navigation", icon=navigation_icon)
+        super().__init__(layout=layout, name="navigation", icon=navigation_icon)
 
         self.navigation_buttons = {}
 
@@ -401,71 +497,61 @@ class Search(Box):
         self.search_box = LineEdit(layout=self, stretch=1, name="searchbox", align="left")
 
 
-class Filters(CollapsibleBox):
-    def __init__(self, layout):
-        self.content = Box(vertical=True, width=150, margins=(0, 10, 0, 10))
-        super().__init__(layout=layout, content=self.content, name="filters", icon=filters_icon)
-
-        Label(text="Testing", layout=self.content, name="filters_label")
-
-
-class PageEntry:
-    def __init__(self, page_class, state=None):
-        self.page_class = page_class
-        self.state = state or {}
-        self.title = page_class.page_title
-
-
 class PageArea(Box):
+    filters = None
     backAvailable = Signal(bool)
     forwardAvailable = Signal(bool)
 
     def __init__(self, layout):
-        super().__init__(
-            vertical=True, layout=layout, overflow=False, name="page_area", stretch=1, margins=(10, 10, 10, 10)
-        )
+        super().__init__(vertical=True, stretch=1, layout=layout)
 
         self.history = []
         self.current_index = -1
         self.current_page = None
 
-    def _loadPage(self):
+    def handleResize(self, width):
+        if self.current_page and self.current_page.filters:
+            self.current_page.filters_container.checkWidth(width)
+
+    def loadPage(self):
         if self.current_page:
-            self.current_page.deleteLater()
+            self.current_page.hide()
 
-        entry = self.history[self.current_index]
-
-        self.current_page = entry.page_class(page_area=self)
-        self.addWidget(self.current_page, stretch=1)
+        self.current_page = self.history[self.current_index]
+        self.current_page.drawPage()
         self.current_page.show()
         self.backAvailable.emit(self.current_index > 0)
         self.forwardAvailable.emit(self.current_index < len(self.history) - 1)
 
+        if self.current_page.filters:
+            self.current_page.show()
+
+        self.handleResize(self.current_page.window().width())
+
     def showPage(self, page_class):
+        for page in self.history[self.current_index + 1 :]:
+            page.deleteLater()
+
         self.history = self.history[: self.current_index + 1]
-        entry = PageEntry(page_class)
-        self.history.append(entry)
+        new_page = page_class(layout=self)
+        self.history.append(new_page)
         self.current_index += 1
-
-        if self.current_page:
-            self.current_page.deleteLater()
-
-        self._loadPage()
+        self.loadPage()
 
     def goBack(self):
         if self.current_index <= 0:
             return
         self.current_index -= 1
-        self._loadPage()
+        self.loadPage()
 
     def goForward(self):
         if self.current_index >= len(self.history) - 1:
             return
         self.current_index += 1
-        self._loadPage()
+        self.loadPage()
 
     def refreshPage(self):
-        self._loadPage()
+        self.loadPage()
 
 
 class NotificationArea(Box):

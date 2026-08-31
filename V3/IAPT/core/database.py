@@ -220,6 +220,17 @@ def upsert_results(results):
             ],
         )
 
+        student_ids = [result["student_id"] for result in results if result.get("student_id")]
+        if student_ids:
+            connection.executemany(
+                """
+                UPDATE students
+                SET account_found = 1
+                WHERE student_id = ?
+                """,
+                [(student_id,) for student_id in student_ids],
+            )
+
         badges = [(result["student_id"], badge) for result in results for badge in result["badge_list"]]
 
         connection.executemany(
