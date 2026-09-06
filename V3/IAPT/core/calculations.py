@@ -57,3 +57,15 @@ def calculate_award_status(students):
         student.silver_awarded = student.silver_current >= 300
 
     return students
+
+
+def calculate_class_stats(students, classes):
+    for classname in classes:
+        for student in students:
+            if student.classname == classname.name:
+                classname.student_count += 1
+                classname.outstanding_count += student.outstanding
+                classname.late_count += student.late
+                classname.completed_count += student.complete
+
+    return classes

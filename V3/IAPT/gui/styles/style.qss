@@ -1,23 +1,23 @@
 *, *:disabled, *:hover, *:pressed {
-    [[global:global]]
+    [[classes:global]]
 }
-
 /* #region Filters */
 #filters {
     [[classes:side_menu]];
-    border-top-left-radius: [[radius:standard]];
-    border-bottom-left-radius: [[radius:standard]];
+    border-top-left-radius: 20px;
+    border-bottom-left-radius: 20px;
 }
 
-#filters > QPushButton {
+#filters_collapsed_btn {
     [[classes:nav_collapsed_btn]];
-    border-top-left-radius: [[radius:standard]];
-    border-bottom-left-radius: [[radius:standard]];
+    border-top-left-radius: 20px;
+    border-bottom-left-radius: 20px;
+    margin: 10px 0;
 }
 
 #filters_label {
-    border-top-left-radius: [[radius:standard]];
-    [[classes:heading]]
+    [[classes:heading]];
+    border-top-left-radius: 20px;
 }
 
 #filters > QWidget QPushButton {
@@ -34,7 +34,7 @@
 
 #filters QLabel[variant="subheading"] {
     background-color: [[colours:accent]];
-    font-size: [[font_sizes:subheading]];
+    font-size: 15px;
     font-weight: bold;
     padding: 5px;
 }
@@ -57,7 +57,7 @@
     background-color: [[colours:secondary]];
     width: 18px;
     height: 18px;
-    border: [[borders:standard]] [[colours:border_primary]];
+    border: 2px solid [[colours:border_primary]];
     border-radius: 10px;
 }
 
@@ -68,6 +68,16 @@
 #filters QCheckBox::indicator:checked {
     background-color: [[colours:error]];
 }
+
+#filters QDateEdit {
+    padding: 5px 5px 5px 10px;
+    background-color: [[colours:secondary]];
+}
+
+#filters QLineEdit {
+    padding: 5px 5px 5px 10px;
+    background-color: [[colours:secondary]];
+}
 /* #endregion */
 
 /* #region Footer */
@@ -77,58 +87,13 @@
 }
 /* #endregion */
 
-/* #region General Pages */
-#main_content {
-    margin: 10px;
-    border-radius: [[radius:standard]];
-    background-color: [[colours:background_secondary]];
-    border: [[borders:standard]] [[colours:border_primary]];
-}
-
-#page_title {
-    [[classes:heading]];
-    border-top-left-radius: [[radius:standard]];
-    border-top-right-radius: [[radius:standard]];
-}
-
-#main_content QTableWidget {
-    border-radius: [[radius:standard]];
-}
-
-#main_content QTableWidget::item {
-    background-color: transparent;
-}
-
-#main_content QHeaderView {
-    font-weight: bold;
-    font-size: [[font_sizes:table_header]];
-    background-color: [[colours:accent]];
-}
-
-#main_content QPushButton {
-    [[classes:standard_btn]];
-}
-
-#main_content QPushButton:hover {
-    [[classes:standard_btn_hover]];
-}
-
-#main_content QPushButton:pressed {
-    [[classes:standard_btn_pressed]];
-}
-
-#main_content QPushButton:disabled {
-    [[classes:standard_btn_disabled]];
-}
-/* #endregion */
-
 /* #region Header */
 #header {
     background-color: [[colours:accent]];
 }
 
 #program_title {
-    font-size: [[font_sizes:program_title]];
+    font-size: 25px;
     padding: 5px;
     font-weight: bold;
 }
@@ -175,10 +140,11 @@
     border-bottom-right-radius: [[radius:standard]];
 }
 
-#navigation > QPushButton {
+#navigation_collapsed_btn {
     [[classes:nav_collapsed_btn]];
     border-top-right-radius: [[radius:standard]];
     border-bottom-right-radius: [[radius:standard]];
+    margin: 10px 0;
 }
 
 #navigation_label {
@@ -186,36 +152,35 @@
     [[classes:heading]]
 }
 
-#navigation > QWidget QPushButton {
+#navigation QWidget QPushButton {
     [[classes:standard_btn]];
 }
 
-#navigation > QWidget QPushButton:hover {
+#navigation QWidget QPushButton:hover {
     [[classes:standard_btn_hover]];
 }
 
-#navigation > QWidget QPushButton:pressed {
+#navigation QWidget QPushButton:pressed {
     [[classes:standard_btn_pressed]];
 }
 /* #endregion */
 
 /* #region Notifications */
 #notifications > QWidget {
-    border: [[borders:standard]] [[colours:border_primary]];
-    border-radius: [[radius:notification]];
+    border: 2px solid [[colours:border_primary]];
+    border-radius: 15px;
 }
 
 #notifications QWidget[variant="notification_header"] QLabel {
     font-size: [[font_sizes:notification_label]];
     font-weight: bold;
-    border-radius: [[radius:notification]];
-    padding-left: 5px;
+    padding: 5px;
 }
 
 #notifications QWidget[variant="notification_header"] QPushButton {
-    font-weight: bold;
     padding: 5px;
-    border-radius: [[radius:notification]];
+    margin-top: 1px;
+    border-radius: 15px;
 }
 
 #notifications > QWidget[variant="SUCCESS"] {
@@ -240,6 +205,11 @@
 
 #notifications > QWidget[variant="ERROR"] QPushButton:hover {
     background-color: [[colours:error_highlight]];
+}
+
+#notifications QProgressBar {
+    margin-left: 2px;
+    margin-right: 2px;
 }
 
 #notifications QProgressBar::chunk {
@@ -269,5 +239,171 @@
     border-bottom-left-radius: 10px;
     margin: 5px 0;
     padding: 0 6px 4px;
+}
+/* #endregion */
+
+/* #region General Pages */
+#main_content {
+    margin: 10px;
+    border-radius: [[radius:standard]];
+    background-color: [[colours:background_secondary]];
+    border: [[borders:standard]] [[colours:border_primary]];
+}
+
+#page_title {
+    [[classes:heading]];
+    border-top-left-radius: [[radius:standard]];
+    border-top-right-radius: [[radius:standard]];
+}
+
+#main_content QTableWidget {
+    border-radius: [[radius:standard]];
+}
+
+#main_content QTableWidget::item {
+    background-color: transparent;
+}
+
+#main_content QHeaderView {
+    font-weight: bold;
+    font-size: [[font_sizes:table_header]];
+    background-color: [[colours:accent]];
+}
+
+#main_content QLabel[variant="subheading"] {
+    background-color: [[colours:secondary]];
+    padding: 5px;
+    font-weight: bold;
+    font-size: 14px;
+}
+/* #endregion */
+
+/* #region Imports Page */
+#imports_page QPushButton {
+    [[classes:standard_btn]];
+}
+
+#imports_page QPushButton:hover {
+    [[classes:standard_btn_hover]];
+}
+
+#imports_page QPushButton:pressed {
+    [[classes:standard_btn_pressed]];
+}
+
+#imports_page QPushButton:disabled {
+    [[classes:standard_btn_disabled]];
+}
+/* #endregion */
+
+/* #region Student Page */
+#student_info QWidget {
+    min-height: 5px;
+}
+
+#student_info QLabel {
+    background-color: [[colours:secondary]];
+    padding: 5px;
+    border: 2px solid [[colours:border_secondary]];
+    border-top-left-radius: 25px;
+    border-top-right-radius: 25px;
+}
+
+#student_info QLineEdit, #student_info QCheckBox {
+    background-color: [[colours:background_tertiary]];
+    border: 2px solid [[colours:border_secondary]];
+    padding: 5px;
+    border-bottom-left-radius: 25px;
+    border-bottom-right-radius: 25px;
+}
+
+#student_info QCheckBox::indicator {
+    subcontrol-position: center;
+}
+
+#student_page QProgressBar {
+    margin: 5px 10px;
+    background-color: [[colours:secondary]];
+    border-radius: 5px;
+    height: 5px;
+}
+
+#student_page QProgressBar[variant="silver_progress"]::chunk {
+    background-color: [[colours:silver]];
+    border-radius: 5px;
+}
+
+#student_page QProgressBar[variant="bronze_progress"]::chunk {
+    background-color: [[colours:bronze]];
+    border-radius: 5px;
+}
+
+#student_page QLabel[variant="subheading_red"] {
+    background-color: [[colours:outstanding_homework]];
+    padding: 5px;
+    font-weight: bold;
+}
+
+#student_page QLabel[variant="subheading_yellow"] {
+    background-color: [[colours:late_homework]];
+    padding: 5px;
+    font-weight: bold;
+}
+
+#student_page QLabel[variant="subheading_green"] {
+    background-color: [[colours:completed_homework]];
+    padding: 5px;
+    font-weight: bold;
+}
+
+#weekly_points {
+    padding: 5px;
+    background-color: [[colours:accent]];
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+#student_page QWidget[variant="subheading_citizen"] {
+    background-color: [[colours:citizen]];
+}
+
+#student_page QWidget[variant="subheading_worker"] {
+    background-color: [[colours:worker]];
+}
+
+#student_page QWidget[variant="subheading_maker"] {
+    background-color: [[colours:maker]];
+}
+
+#student_page QWidget[variant="subheading_entrepreneur"] {
+    background-color: [[colours:entrepreneur]];
+}
+
+#student_page QPushButton[variant="Citizen"] {
+    color: [[colours:citizen]];
+}
+
+#student_page QPushButton[variant="Maker"] {
+    color: [[colours:maker]];
+}
+
+#student_page QPushButton[variant="Worker"] {
+    color: [[colours:worker]];
+}
+
+#student_page QPushButton[variant="Entrepreneur"] {
+    color: [[colours:entrepreneur]];
+}
+
+#category_progress > QWidget > QWidget {
+    border-radius: 60px;
+}
+
+#category_progress > QWidget > QWidget > QWidget {
+    border-radius: 50px;
+    min-height: 100px;
+    min-width: 100px;
+    background-color: [[colours:background_tertiary]];
 }
 /* #endregion */

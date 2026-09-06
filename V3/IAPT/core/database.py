@@ -24,8 +24,8 @@ def initialise_database():
             first_name TEXT NOT NULL,
             last_name TEXT NOT NULL,
             class_name TEXT,
-            active INTEGER NOT NULL DEFAULT 1,
-            manual_disable INTEGER NOT NULL DEFAULT 0,
+            on_roll INTEGER NOT NULL DEFAULT 1,
+            disabled INTEGER NOT NULL DEFAULT 0,
             account_found INTEGER NOT NULL DEFAULT 0
         )
     """)
@@ -88,7 +88,7 @@ def upsert_students(students, class_name):
     try:
         connection = get_connection()
 
-        connection.execute("""UPDATE students SET active = 0 WHERE class_name = ?""", (class_name,))
+        connection.execute("""UPDATE students SET on_roll = 0 WHERE class_name = ?""", (class_name,))
         connection.executemany(
             """
             INSERT INTO students (
@@ -96,46 +96,66 @@ def upsert_students(students, class_name):
                 first_name,
                 last_name,
                 class_name,
-                active
+                on_roll
             )
             VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(student_id) DO UPDATE SET
                 first_name = excluded.first_name,
                 last_name = excluded.last_name,
                 class_name = excluded.class_name,
-                active = excluded.active
+                on_roll = excluded.on_roll
             """,
             [
-                (
-                    student["student_id"],
-                    student["first_name"],
-                    student["last_name"],
-                    class_name,
-                    1,
-                )
+                (student["student_id"], student["first_name"], student["last_name"], class_name, 1)
                 for student in students
             ],
         )
 
         connection.commit()
     except Exception as error:
+        print(error)
         raise IAPTError(message="Failed to update students table in database", error=error, student_count=len(students))
     finally:
         if connection:
             connection.close()
 
 
-def set_student_disabled(student_id, state):
+def update_student(student):
     connection = None
 
     try:
         connection = get_connection()
-        connection.execute("""UPDATE students SET manual_disable = ? WHERE student_id = ?""", (state, student_id))
-        connection.commit()
-    except Exception as error:
-        raise IAPTError(
-            message="Failed to update disabled status in students table in database", error=error, student_id=student_id
+        cursor = connection.execute(
+            """
+            UPDATE students
+            SET
+                first_name = ?,
+                last_name = ?,
+                class_name = ?,
+                on_roll = ?,
+                disabled = ?,
+                account_found = ?
+            WHERE student_id = ?
+            """,
+            (
+                student.firstname,
+                student.lastname,
+                student.classname,
+                int(student.on_roll),
+                int(student.disabled),
+                int(student.account_found),
+                student.id,
+            ),
         )
+
+        if cursor.rowcount == 0:
+            raise IAPTError(message="Student was not found", student_id=student.id)
+
+        connection.commit()
+    except IAPTError:
+        raise
+    except Exception as error:
+        raise IAPTError(message="Failed to update student in database", error=error, student_id=student.id)
     finally:
         if connection:
             connection.close()
@@ -290,7 +310,7 @@ def read_students(student_ids=None):
         connection = get_connection()
 
         if student_ids is None:
-            rows = connection.execute("""SELECT * FROM students WHERE active = 1""").fetchall()
+            rows = connection.execute("""SELECT * FROM students""").fetchall()
         else:
             if isinstance(student_ids, str):
                 student_ids = [student_ids]
@@ -298,7 +318,7 @@ def read_students(student_ids=None):
             placeholders = ",".join("?" for _ in student_ids)
 
             rows = connection.execute(
-                f"""SELECT * FROM students WHERE active = 1 AND student_id IN ({placeholders})""", student_ids
+                f"""SELECT * FROM students WHERE student_id IN ({placeholders})""", student_ids
             ).fetchall()
 
         return [
@@ -308,6 +328,8 @@ def read_students(student_ids=None):
                 lastname=row["last_name"],
                 classname=row["class_name"],
                 account_found=bool(row["account_found"]),
+                on_roll=bool(row["on_roll"]),
+                disabled=bool(row["disabled"]),
             )
             for row in rows
         ]
@@ -380,7 +402,9 @@ def read_badges(students):
 
         for row in rows:
             badge = Badge(
-                name=row["badge_name"], completed_date=datetime.strptime(row["completed_date"], "%Y-%m-%d").date()
+                id=row["id"],
+                name=row["badge_name"],
+                completed_date=datetime.strptime(row["completed_date"], "%Y-%m-%d").date(),
             )
             students_by_id[row["student_id"]].badges.append(badge)
 
@@ -394,15 +418,29 @@ def read_badges(students):
             connection.close()
 
 
-def read_homeworks():
+def read_homeworks(homework_ids=None):
     connection = None
 
     try:
         connection = get_connection()
-        rows = connection.execute("""SELECT * FROM schedule """).fetchall()
+
+        if homework_ids is None:
+            rows = connection.execute("""SELECT * FROM schedule """).fetchall()
+        else:
+            if isinstance(homework_ids, str):
+                homework_ids = [homework_ids]
+
+            placeholders = ",".join("?" for _ in homework_ids)
+
+            homework_ids = [int(id) for id in homework_ids]
+
+            rows = connection.execute(
+                f"""SELECT * FROM schedule WHERE id IN ({placeholders})""", homework_ids
+            ).fetchall()
 
         return [
             Homework(
+                id=str(row["id"]),
                 badge_name=row["badge_name"],
                 category=row["category"],
                 points=row["points"],

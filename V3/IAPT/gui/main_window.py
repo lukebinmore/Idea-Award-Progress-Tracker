@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QMainWindow
 from PySide6.QtCore import Signal
 from IAPT.gui.components import Box, Header, Footer, Navigation, Search, PageArea, NotificationArea
 from IAPT.gui.page_registry import NAV_PAGES
-from IAPT.gui.pages.students import StudentsPage
+from IAPT.gui.pages.dashboard import DashboardPage
 
 
 class MainWindow(QMainWindow):
@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
 
         self.widthChanged.connect(lambda _: page_area.handleResize(self.width()))
 
-        page_area.showPage(StudentsPage)
+        page_area.showPage(DashboardPage)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

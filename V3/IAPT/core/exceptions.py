@@ -7,5 +7,3 @@ class IAPTError(Exception):
         self.error_data = {}
         for key, value in kwargs.items():
             self.error_data[key] = value
-
-        print(self.error_data)

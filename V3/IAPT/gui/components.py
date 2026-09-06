@@ -1,11 +1,12 @@
 from IAPT.core.logs import NotificationHandler
 import logging
 from PySide6.QtCore import Qt, Signal, QSize, QEvent, QTimer
-from PySide6.QtGui import QColor, QPainterPath, QRegion, QPen
+from PySide6.QtGui import QColor, QPainterPath, QRegion, QPen, QIntValidator
 from PySide6.QtWidgets import (
     QStyledItemDelegate,
     QHBoxLayout,
     QVBoxLayout,
+    QGridLayout,
     QLabel,
     QWidget,
     QPushButton,
@@ -18,11 +19,12 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QCheckBox,
     QComboBox,
+    QDateEdit,
     QScrollArea,
     QFrame,
 )
 from IAPT.gui.icons.icons import *
-from IAPT.gui.styles.stylesheet import COLOURS, RADIUS
+from IAPT.gui.styles.stylesheet import COLOURS
 from IAPT.gui.quotes import QUOTES
 import random
 
@@ -60,31 +62,78 @@ class Component:
         layout = kwargs.pop("layout", None)
         name = kwargs.pop("name", None)
         variant = kwargs.pop("variant", None)
+        bg_colour = kwargs.pop("bg_colour", None)
+        colour = kwargs.pop("colour", None)
         stretch = kwargs.pop("stretch", 0)
         enabled = kwargs.pop("enabled", True)
         height = kwargs.pop("height", None)
         width = kwargs.pop("width", None)
+        position = kwargs.pop("position", None)
 
         widget.setObjectName(name) if name else None
         widget.setProperty("variant", variant) if variant else None
+        widget.setProperty("bg_colour", bg_colour) if bg_colour else None
+        widget.setProperty("colour", colour) if colour else None
         widget.setEnabled(enabled)
         widget.setFixedHeight(height) if height else None
         widget.setFixedWidth(width) if width else None
-        layout.addWidget(widget, stretch) if layout else None
+
+        if layout:
+            if position != None:
+                layout.addWidget(widget, row=position[0], column=position[1])
+            else:
+                layout.addWidget(widget, stretch)
 
         widget.kwargs = kwargs
 
 
 class Box(QWidget):
-    def __init__(self, vertical=False, align="top", overflow=True, spacing=0, margins=(0, 0, 0, 0), **kwargs):
+    def __init__(
+        self,
+        vertical=False,
+        grid=False,
+        position=None,
+        align="top",
+        overflow=True,
+        spacing=0,
+        margins=(0, 0, 0, 0),
+        scrollable=False,
+        **kwargs,
+    ):
         super().__init__(kwargs.pop("parent", None))
-        Component.setup(self, **kwargs)
+
+        if scrollable:
+            self.scroll_area = QScrollArea()
+            Component.setup(self.scroll_area, position=position, **kwargs)
+            self.scroll_area.setWidget(self)
+            self.scroll_area.setWidgetResizable(True)
+
+            if grid:
+                self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+                self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            elif vertical:
+                self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+                self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            else:
+                self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+                self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+            self.scroll_area.setFrameShape(QFrame.NoFrame)
+            self.kwargs = kwargs
+            self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        else:
+            Component.setup(self, position=position, **kwargs)
 
         self.overflow = overflow
-        self.radius = int(RADIUS["standard"][:-2])
+        self.radius = 20
 
         self.setAttribute(Qt.WA_StyledBackground, True)
-        self.layout = QVBoxLayout(self) if vertical else QHBoxLayout(self)
+        if grid:
+            self.layout = QGridLayout(self)
+        elif vertical:
+            self.layout = QVBoxLayout(self)
+        else:
+            self.layout = QHBoxLayout(self)
         self.setMargins(*margins)
         self.setSpacing(spacing)
 
@@ -99,8 +148,18 @@ class Box(QWidget):
         else:
             self.layout.setAlignment(Qt.AlignCenter)
 
-    def addWidget(self, widget, stretch=0):
-        self.layout.addWidget(widget, stretch)
+    def addWidget(self, widget, stretch=0, row=None, column=None):
+        if row != None and column != None:
+            self.layout.addWidget(widget, row, column)
+        else:
+            self.layout.addWidget(widget, stretch)
+
+    def clear(self):
+        while self.layout.count():
+            item = self.layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
 
     def setMargins(self, left, top, right, bottom):
         self.layout.setContentsMargins(left, top, right, bottom)
@@ -109,7 +168,7 @@ class Box(QWidget):
         self.layout.setSpacing(spacing)
 
     def updateMask(self):
-        if self.overflow:
+        if self.overflow == True:
             self.clearMask()
             return
 
@@ -121,67 +180,87 @@ class Box(QWidget):
             -margins.bottom(),
         )
 
+        top_left, top_right, bottom_right, bottom_left = self.overflow
+
         path = QPainterPath()
-        path.addRoundedRect(rect, self.radius, self.radius)
+        path.moveTo(rect.left() + top_left, rect.top())
+
+        path.lineTo(rect.right() - top_right, rect.top())
+        if top_right:
+            path.arcTo(
+                rect.right() - 2 * top_right,
+                rect.top(),
+                2 * top_right,
+                2 * top_right,
+                90,
+                -90,
+            )
+
+        path.lineTo(rect.right(), rect.bottom() - bottom_right)
+        if bottom_right:
+            path.arcTo(
+                rect.right() - 2 * bottom_right,
+                rect.bottom() - 2 * bottom_right,
+                2 * bottom_right,
+                2 * bottom_right,
+                0,
+                -90,
+            )
+
+        path.lineTo(rect.left() + bottom_left, rect.bottom())
+        if bottom_left:
+            path.arcTo(
+                rect.left(),
+                rect.bottom() - 2 * bottom_left,
+                2 * bottom_left,
+                2 * bottom_left,
+                270,
+                -90,
+            )
+
+        path.lineTo(rect.left(), rect.top() + top_left)
+        if top_left:
+            path.arcTo(
+                rect.left(),
+                rect.top(),
+                2 * top_left,
+                2 * top_left,
+                180,
+                -90,
+            )
+
+        path.closeSubpath()
         self.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        if not self.overflow:
+        if self.overflow != True:
             self.updateMask()
-
-
-class ScrollBox(Box):
-    def __init__(self, vertical=False, layout=None, **kwargs):
-        super().__init__(vertical=vertical, **kwargs)
-
-        scroll = QScrollArea(layout)
-        scroll.setWidget(self)
-        scroll.setWidgetResizable(True)
-
-        if vertical:
-            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-            scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        else:
-            scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-
-        scroll.setFrameShape(QFrame.NoFrame)
-        layout.addWidget(scroll) if layout else None
-
-    def clear(self):
-        while self.layout.count():
-            item = self.layout.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
 
 
 class CollapsibleBox(Box):
     def __init__(
         self,
+        layout=None,
         text=None,
         icon=None,
         icon_size=None,
         button_vert=True,
         collapsed=False,
-        vertical=True,
-        width=150,
-        spacing=5,
-        margins=(0, 10, 0, 10),
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(layout=layout, **kwargs)
 
         self.collapsed = collapsed
-        self.collapsed_button = Button(layout=self, text=text, icon=icon, icon_size=icon_size)
+        self.collapsed_button = Button(
+            layout=layout, text=text, icon=icon, icon_size=icon_size, name=kwargs.get("name", "") + "_collapsed_btn"
+        )
 
         if button_vert:
             self.collapsed_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         else:
             self.collapsed_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
-        self.content = Box(vertical=vertical, layout=self, width=width, spacing=spacing, margins=margins)
         self.setCollapsed(self.collapsed)
 
         self.collapsed_button.installEventFilter(self)
@@ -190,10 +269,10 @@ class CollapsibleBox(Box):
 
     def setCollapsed(self, collapsed):
         if collapsed:
-            self.content.hide()
+            self.hide()
             self.collapsed_button.show()
         else:
-            self.content.show()
+            self.show()
             self.collapsed_button.hide()
 
     def checkWidth(self, width):
@@ -228,25 +307,36 @@ class Page(Box):
         self.state = {}
 
         self.page = Box(
-            vertical=True, layout=self, name="main_content", overflow=False, spacing=5, margins=(10, 10, 10, 10)
+            vertical=True,
+            layout=self,
+            name="main_content",
+            overflow=(20, 20, 20, 20),
+            spacing=5,
+            margins=(10, 10, 10, 10),
         )
         self.page_header = Label(layout=self.page, name="page_title")
 
-        self.content = ScrollBox(layout=self.page, vertical=True, spacing=5)
-        self.content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.content = Box(layout=self.page, vertical=True, spacing=5, scrollable=True, stretch=1)
 
         if self.filters:
-            self.filters_container = CollapsibleBox(layout=self, spacing=5, name="filters", icon=filters_icon)
-            Label(text="Filters", name="filters_label", layout=self.filters_container.content)
-            self.filters = self.filters_container.content
+            self.filters_container = CollapsibleBox(
+                layout=self,
+                name="filters",
+                vertical=True,
+                spacing=5,
+                icon=filters_icon,
+                margins=(0, 10, 0, 10),
+                width=160,
+                overflow=(20, 0, 0, 20),
+            )
+            Label(text="Filters", layout=self.filters_container, name="filters_label")
+            self.filters = Box(vertical=True, spacing=5, layout=self.filters_container, scrollable=True)
 
     def drawPage(self):
         self.content.clear()
 
         if self.filters:
-            for widget in self.controls:
-                widget.deleteLater()
-            self.controls = []
+            self.filters.clear()
 
 
 class Button(QPushButton):
@@ -276,8 +366,8 @@ class Label(QLabel):
 
 
 class LineEdit(QLineEdit):
-    def __init__(self, read_only=False, suggestions=None, case_sensitive=False, align="center", **kwargs):
-        super().__init__()
+    def __init__(self, text=None, read_only=False, suggestions=None, case_sensitive=False, align="center", **kwargs):
+        super().__init__(text=text)
         Component.setup(self, **kwargs)
 
         self.setReadOnly(read_only)
@@ -298,24 +388,79 @@ class LineEdit(QLineEdit):
             self.setAlignment(Qt.AlignLeft)
 
 
+class NumberEdit(LineEdit):
+    valueCommitted = Signal(object)
+
+    def __init__(self, minimum=0, maximum=30, value=None, placeholder_text="", **kwargs):
+        super().__init__(**kwargs)
+        self.setValidator(QIntValidator(minimum, maximum, self))
+        self.setPlaceholderText(placeholder_text)
+        self.setText(str(value) if value is not None else "")
+
+    def value(self):
+        return int(self.text()) if self.text() else None
+
+    def keyPressEvent(self, event):
+        super().keyPressEvent(event)
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            self.valueCommitted.emit(self.value())
+
+    def focusOutEvent(self, event):
+        super().focusOutEvent(event)
+        self.valueCommitted.emit(self.value())
+
+
+class DateEdit(QDateEdit):
+    def __init__(self, minimum=None, value=None, **kwargs):
+        super().__init__()
+        Component.setup(self, **kwargs)
+        self.setCalendarPopup(True)
+        self.setDisplayFormat("dd/MM/yyyy")
+        if minimum:
+            self.setMinimumDate(minimum)
+        if value:
+            self.setDate(value)
+
+
 class CheckBox(QCheckBox):
-    def __init__(self, text="", text_align="left", box_align="right", default=False, vertical=False, size=18, **kwargs):
+    def __init__(
+        self,
+        text="",
+        text_align="left",
+        box_only=False,
+        box_align="right",
+        default=False,
+        vertical=False,
+        read_only=False,
+        **kwargs,
+    ):
         super().__init__()
         Component.setup(self, **kwargs)
 
         self.setChecked(default)
-        layout = QVBoxLayout(self) if vertical else QHBoxLayout(self)
-        Label(text=text, align=text_align, layout=layout)
+        self.read_only = read_only
+        self.setFocusPolicy(Qt.NoFocus) if read_only else None
 
-        if box_align == "left":
-            self.setLayoutDirection(Qt.LeftToRight)
-            layout.setContentsMargins(35, 5, 10, 5)
-        else:
-            self.setLayoutDirection(Qt.RightToLeft)
-            layout.setContentsMargins(10, 5, 35, 5)
+        if not box_only:
+            layout = QVBoxLayout(self) if vertical else QHBoxLayout(self)
+            Label(text=text, align=text_align, layout=layout)
+
+            if box_align == "left":
+                self.setLayoutDirection(Qt.LeftToRight)
+                layout.setContentsMargins(35, 5, 10, 5)
+            else:
+                self.setLayoutDirection(Qt.RightToLeft)
+                layout.setContentsMargins(10, 5, 35, 5)
 
     def hitButton(self, pos):
         return self.contentsRect().contains(pos)
+
+    def mousePressEvent(self, event):
+        if self.read_only:
+            event.ignore()
+            return
+
+        super().mousePressEvent(event)
 
 
 class ComboBox(QComboBox):
@@ -337,23 +482,24 @@ class ProgressBar(QProgressBar):
         super().__init__()
         Component().setup(self, **kwargs)
 
+        max = range[1]
+
         self.setRange(*range)
-        self.setValue(start_value)
+        self.setValue(start_value if max >= start_value else max)
         self.setTextVisible(show_text)
 
 
 class Table(QTableWidget):
-    def __init__(self, columns, expandable=True, **kwargs):
+    def __init__(self, columns, click_page=None, page_area=None, id_column=0, **kwargs):
         super().__init__()
         Component.setup(self, **kwargs)
 
-        self.row_objects = {}
         self.hovered_row = -1
+        self.columns = columns
 
         self.viewport().setMouseTracking(True)
         self.viewport().installEventFilter(self)
 
-        self.expandable = expandable
         self.setItemDelegate(TableDelegate(self))
 
         self.verticalHeader().setVisible(False)
@@ -361,17 +507,23 @@ class Table(QTableWidget):
         self.setSelectionMode(QTableWidget.SingleSelection)
         self.setEditTriggers(QTableWidget.NoEditTriggers)
         self.setColumnCount(len(columns))
-        self.setHorizontalHeaderLabels([name for name, attribute in columns])
+        self.setHorizontalHeaderLabels([name for name, _ in columns])
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
-        self.cellClicked.connect(self._cellClicked) if self.expandable else None
+
+        if click_page:
+            self.cellClicked.connect(
+                lambda row, column: page_area.showPage(
+                    click_page,
+                    id=self.item(row, id_column).text(),
+                )
+            )
 
     def eventFilter(self, watched, event):
         if watched is self.viewport() and event.type() == QEvent.MouseMove:
             index = self.indexAt(event.position().toPoint())
             self.hovered_row = index.row()
             self.viewport().update()
-
         elif event.type() == QEvent.Leave:
             self.hovered_row = -1
             self.viewport().update()
@@ -403,40 +555,17 @@ class Table(QTableWidget):
         super().resizeEvent(event)
         self.sizeColumns()
 
-    def registerRow(self, row, student_row):
-        self.row_objects[row] = student_row
-
-    def _cellClicked(self, row, column):
-        if row in self.row_objects:
-            self.row_objects[row].toggleOverview()
-        self.clearSelection()
-
-
-class TableRow:
-    def __init__(self, table, columns, data, row_colour=None):
-        self.table = table
-
-        self.summary_row = table.rowCount()
-        table.insertRow(self.summary_row)
-        table.registerRow(self.summary_row, self)
-        for column, attribute in enumerate(columns):
-            value = getattr(data, attribute)
+    def addItem(self, data, row_colour=None):
+        row = self.rowCount()
+        self.insertRow(row)
+        for column, attribute in enumerate(self.columns):
+            value = getattr(data, attribute[1])
             item = QTableWidgetItem(str(value))
             item.setTextAlignment(Qt.AlignCenter)
             item.setForeground(QColor(row_colour)) if row_colour else None
-            table.setItem(self.summary_row, column, item)
+            self.setItem(row, column, item)
 
-        if self.table.expandable:
-            self.content_row = table.rowCount()
-            table.insertRow(self.content_row)
-            table.setSpan(self.content_row, 0, 1, len(columns))
-            self.content = Box(vertocal=True, height=100, margins=(20, 0, 20, 20))
-            table.setCellWidget(self.content_row, 0, self.content)
-            table.setRowHidden(self.content_row, True)
-            self.table.resizeRowToContents(self.content_row)
-
-    def toggleOverview(self):
-        self.table.setRowHidden(self.content_row, not self.table.isRowHidden(self.content_row))
+        return row
 
 
 class ExpandingButton(Box):
@@ -477,14 +606,23 @@ class Navigation(CollapsibleBox):
     pageSelected = Signal(object)
 
     def __init__(self, layout, pages):
-        super().__init__(layout=layout, name="navigation", icon=navigation_icon)
+        super().__init__(
+            layout=layout,
+            name="navigation",
+            vertical=True,
+            spacing=5,
+            icon=navigation_icon,
+            margins=(0, 10, 0, 10),
+            width=160,
+            overflow=(0, 20, 20, 0),
+        )
 
         self.navigation_buttons = {}
-
-        Label(text="Navigation", layout=self.content, name="navigation_label")
+        Label(text="Navigation", layout=self, name="navigation_label")
+        content = Box(vertical=True, spacing=5, layout=self, scrollable=True)
 
         for page in pages:
-            button = Button(text=page.page_title, layout=self.content, name=page.nav_btn_name)
+            button = Button(text=page.page_title, layout=content, name=page.nav_btn_name)
             button.clicked.connect(lambda checked=False, page=page: self.pageSelected.emit(page))
             self.navigation_buttons[page.nav_btn_name] = button
 
@@ -528,12 +666,12 @@ class PageArea(Box):
 
         self.handleResize(self.current_page.window().width())
 
-    def showPage(self, page_class):
+    def showPage(self, page_class, **kwargs):
         for page in self.history[self.current_index + 1 :]:
             page.deleteLater()
 
         self.history = self.history[: self.current_index + 1]
-        new_page = page_class(layout=self)
+        new_page = page_class(layout=self, page_area=self, **kwargs)
         self.history.append(new_page)
         self.current_index += 1
         self.loadPage()
@@ -590,7 +728,7 @@ class Notification(Box):
 
         self.setProperty("variant", level)
 
-        header = Box(layout=self, variant="notification_header")
+        header = Box(layout=self, variant="notification_header", height=32)
         title = Label(layout=header, text=title, stretch=1, align="left")
         close_btn = Button(layout=header, icon=close_icon, icon_size=(20, 20))
         close_btn.clicked.connect(self.deleteLater)
@@ -601,14 +739,19 @@ class Notification(Box):
             if record.error:
                 content = Box(vertical=True, layout=self, spacing=7, margins=(0, 0, 0, 5))
                 Label(text=record.error.message, layout=content)
-                if record.error.error_data:
+
+                if level == "ERROR" and record.error.error_data:
                     for key, value in record.error.error_data.items():
                         key = key.replace("_", " ").title()
                         Label(text=f"{key}: {value}", layout=content)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.adjustSize()
+        QTimer.singleShot(100, lambda: self.setFixedHeight(self.height()))
+
     def startTimer(self, duration):
         self.progress = ProgressBar(layout=self, range=(0, duration), start_value=duration, height=3)
-
         self.timer = QTimer(self)
         self.timer.setInterval(50)
         self.timer.timeout.connect(self.updateTimer)
