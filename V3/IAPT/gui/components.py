@@ -1,6 +1,6 @@
 from IAPT.core.logs import NotificationHandler
 import logging
-from PySide6.QtCore import Qt, Signal, QSize, QEvent, QTimer
+from PySide6.QtCore import Qt, Signal, QSize, QEvent, QTimer, QPoint
 from PySide6.QtGui import QColor, QPainterPath, QRegion, QPen, QIntValidator
 from PySide6.QtWidgets import (
     QStyledItemDelegate,
@@ -19,13 +19,18 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QCheckBox,
     QComboBox,
+    QStyle,
+    QStyleOptionComboBox,
+    QStylePainter,
     QDateEdit,
+    QCalendarWidget,
     QScrollArea,
     QFrame,
 )
 from IAPT.gui.icons.icons import *
 from IAPT.gui.styles.stylesheet import COLOURS
 from IAPT.gui.quotes import QUOTES
+from IAPT.core.data import get_students, get_classes, get_homeworks
 import random
 
 
@@ -316,7 +321,7 @@ class Page(Box):
         )
         self.page_header = Label(layout=self.page, name="page_title")
 
-        self.content = Box(layout=self.page, vertical=True, spacing=5, scrollable=True, stretch=1)
+        self.content = Box(layout=self.page, vertical=True, spacing=10, scrollable=True, stretch=1)
 
         if self.filters:
             self.filters_container = CollapsibleBox(
@@ -338,9 +343,12 @@ class Page(Box):
         if self.filters:
             self.filters.clear()
 
+        if self.page_area:
+            self.page_area.updateSearchData()
+
 
 class Button(QPushButton):
-    def __init__(self, text="", icon=None, icon_size=None, **kwargs):
+    def __init__(self, text="", icon=None, icon_size=None, align="center", **kwargs):
         super().__init__(text)
         Component.setup(self, **kwargs)
 
@@ -415,11 +423,38 @@ class DateEdit(QDateEdit):
         super().__init__()
         Component.setup(self, **kwargs)
         self.setCalendarPopup(True)
+        self.lineEdit().setReadOnly(True)
+        self.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lineEdit().installEventFilter(self)
+        self.calendar_popup = QCalendarWidget()
+        self.calendar_popup.setWindowFlags(Qt.WindowType.Popup)
+        self.calendar_popup.clicked.connect(self._selectDate)
         self.setDisplayFormat("dd/MM/yyyy")
         if minimum:
             self.setMinimumDate(minimum)
         if value:
             self.setDate(value)
+
+    def eventFilter(self, watched, event):
+        if watched is self.lineEdit() and event.type() == QEvent.Type.MouseButtonPress:
+            self._openCalendar()
+            return True
+        return super().eventFilter(watched, event)
+
+    def mousePressEvent(self, event):
+        self._openCalendar()
+        event.accept()
+
+    def _openCalendar(self):
+        self.calendar_popup.setMinimumDate(self.minimumDate())
+        self.calendar_popup.setSelectedDate(self.date())
+        self.calendar_popup.adjustSize()
+        self.calendar_popup.move(self.mapToGlobal(QPoint(0, self.height())))
+        self.calendar_popup.show()
+
+    def _selectDate(self, value):
+        self.setDate(value)
+        self.calendar_popup.hide()
 
 
 class CheckBox(QCheckBox):
@@ -464,17 +499,50 @@ class CheckBox(QCheckBox):
 
 
 class ComboBox(QComboBox):
-    def __init__(self, options=None, default=None, **kwargs):
+    def __init__(self, options=None, default=None, align="left", **kwargs):
         super().__init__()
         Component.setup(self, **kwargs)
+        self.text_alignment = {
+            "center": Qt.AlignmentFlag.AlignCenter,
+            "right": Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+        }.get(align, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+
+        if align == "center":
+            self.setItemDelegate(CenterItemDelegate(self))
+        elif align == "right":
+            self.setItemDelegate(RightAlignedItemDelegate(self))
 
         if options:
-            for label, key in options:
-                self.addItem(label, key)
+            if isinstance(options[0], tuple):
+                for label, key in options:
+                    self.addItem(label, key)
+            else:
+                for value in options:
+                    self.addItem(value, value)
 
         if default:
             target = self.findData(default)
             self.setCurrentIndex(target) if target >= 0 else None
+
+    def paintEvent(self, event):
+        if self.text_alignment == Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter:
+            super().paintEvent(event)
+            return
+
+        painter = QStylePainter(self)
+        option = QStyleOptionComboBox()
+        self.initStyleOption(option)
+        text = option.currentText
+        option.currentText = ""
+        painter.drawComplexControl(QStyle.ComplexControl.CC_ComboBox, option)
+
+        text_rect = self.style().subControlRect(
+            QStyle.ComplexControl.CC_ComboBox,
+            option,
+            QStyle.SubControl.SC_ComboBoxEditField,
+            self,
+        )
+        painter.drawItemText(text_rect, self.text_alignment, self.palette(), self.isEnabled(), text)
 
 
 class ProgressBar(QProgressBar):
@@ -490,8 +558,9 @@ class ProgressBar(QProgressBar):
 
 
 class Table(QTableWidget):
-    def __init__(self, columns, click_page=None, page_area=None, id_column=0, **kwargs):
+    def __init__(self, columns, click_page=None, page_area=None, id_column=0, fit_height=False, **kwargs):
         super().__init__()
+        self.fit_height = fit_height
         Component.setup(self, **kwargs)
 
         self.hovered_row = -1
@@ -510,6 +579,12 @@ class Table(QTableWidget):
         self.setHorizontalHeaderLabels([name for name, _ in columns])
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
+
+        if self.fit_height:
+            self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+            self.setWordWrap(False)
+            self.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
 
         if click_page:
             self.cellClicked.connect(
@@ -564,6 +639,13 @@ class Table(QTableWidget):
             item.setTextAlignment(Qt.AlignCenter)
             item.setForeground(QColor(row_colour)) if row_colour else None
             self.setItem(row, column, item)
+
+        if self.fit_height:
+            row_height = self.verticalHeader().defaultSectionSize()
+            self.setRowHeight(row, row_height)
+            table_height = self.horizontalHeader().height() + self.frameWidth() * 2
+            table_height += self.rowCount() * row_height
+            self.setFixedHeight(table_height)
 
         return row
 
@@ -628,11 +710,131 @@ class Navigation(CollapsibleBox):
 
 
 class Search(Box):
+    resultSelected = Signal(object, object)
+
     def __init__(self, layout):
         super().__init__(layout=layout, name="search", margins=(10, 0, 0, 0))
 
-        search_label = Label(text="Search:", layout=self, name="search_label")
+        Label(text="Search:", layout=self, name="search_label")
         self.search_box = LineEdit(layout=self, stretch=1, name="searchbox", align="left")
+        self.search_box.installEventFilter(self)
+        self.search_box.textChanged.connect(self.updateResults)
+
+        self.results_box = Box(parent=layout, name="search_results", overflow=(20, 20, 20, 20))
+        self.results_box.hide()
+        self.move()
+        self.updateData()
+
+    def move(self, width=None, height=None):
+        parent = self.results_box.parentWidget()
+        if not parent:
+            return
+
+        position = self.search_box.mapTo(parent, QPoint(0, self.search_box.height()))
+        panel = self.results_box
+
+        if width and height:
+            panel.setFixedWidth(min(width + 20, self.search_box.width()))
+            panel.setFixedHeight(min(height, (self.window().height() / 5) * 3))
+        else:
+            panel.setMinimumSize(0, 0)
+            panel.setMaximumSize(16777215, 16777215)
+            QTimer.singleShot(10, panel.adjustSize)
+
+        panel.move(position.x(), position.y())
+        panel.raise_()
+
+    def eventFilter(self, watched, event):
+        if watched is self.search_box:
+            if event.type() == QEvent.FocusIn:
+                self.move()
+                self.results_box.show()
+                self.results_box.raise_()
+            elif event.type() == QEvent.FocusOut:
+                self.results_box.hide()
+
+        return super().eventFilter(watched, event)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.move()
+
+    def updateData(self):
+        self.students = get_students()
+        self.classes = get_classes()
+        self.homeworks = get_homeworks()
+        self.updateResults(self.search_box.text() if hasattr(self, "search_box") else "")
+        self.clearSearch()
+
+    def updateResults(self, text):
+        from IAPT.gui.pages.homework import HomeworkPage
+        from IAPT.gui.pages.single_class import ClassPage
+        from IAPT.gui.pages.student import StudentPage
+
+        self.results_box.clear()
+        text = text.strip().lower()
+        if not text:
+            Label(text="Type to search...", layout=self.results_box, variant="subheading", align="left")
+            self.move()
+            return
+
+        categories = [
+            (
+                "Students",
+                [
+                    (student, str(student), StudentPage, {"id": student.id})
+                    for student in self.students
+                    if text in str(student).lower()
+                ],
+            ),
+            (
+                "Classes",
+                [
+                    (group, str(group), ClassPage, {"id": group.name})
+                    for group in self.classes
+                    if text in str(group).lower()
+                ],
+            ),
+            (
+                "Homeworks",
+                [
+                    (homework, str(homework), HomeworkPage, {"id": homework.id})
+                    for homework in self.homeworks
+                    if text in str(homework).lower()
+                ],
+            ),
+        ]
+        result_count = sum(len(results) for _, results in categories)
+        width = 0
+        height = 0
+
+        if not result_count:
+            Label(text="No results found", layout=self.results_box, variant="subheading", align="left")
+        else:
+            results_scroll = Box(
+                layout=self.results_box, vertical=True, scrollable=True, spacing=7, margins=(0, 0, 0, 10)
+            )
+            for category, results in categories:
+                if not results:
+                    continue
+
+                Label(text=category, layout=results_scroll, align="left")
+                for _item, result_text, page, arguments in results:
+                    result_button = Button(text=result_text, layout=results_scroll, align="left")
+                    result_button.clicked.connect(
+                        lambda checked=False, page=page, arguments=arguments: self.resultSelected.emit(page, arguments)
+                    )
+                    btn_width = result_button.sizeHint().width() + 10
+                    width = btn_width if btn_width > width else width
+            results_scroll.adjustSize()
+            height = results_scroll.height()
+
+        self.move(width=width, height=height)
+
+    def clearSearch(self):
+        self.search_box.clear()
+        self.search_box.clearFocus()
+        self.results_box.hide()
 
 
 class PageArea(Box):
@@ -640,12 +842,13 @@ class PageArea(Box):
     backAvailable = Signal(bool)
     forwardAvailable = Signal(bool)
 
-    def __init__(self, layout):
+    def __init__(self, layout, updateSearchData):
         super().__init__(vertical=True, stretch=1, layout=layout)
 
         self.history = []
         self.current_index = -1
         self.current_page = None
+        self.updateSearchData = updateSearchData
 
     def handleResize(self, width):
         if self.current_page and self.current_page.filters:

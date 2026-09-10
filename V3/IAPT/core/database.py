@@ -274,6 +274,43 @@ def upsert_results(results):
             connection.close()
 
 
+def update_homework(homework):
+    connection = None
+
+    try:
+        connection = get_connection()
+        cursor = connection.execute(
+            """
+            UPDATE schedule
+            SET
+                badge_name = ?,
+                category = ?,
+                points = ?,
+                due_date = ?
+            WHERE id = ?
+            """,
+            (
+                homework.badge_name,
+                homework.category,
+                homework.points,
+                homework.due_date,
+                homework.id,
+            ),
+        )
+
+        if cursor.rowcount == 0:
+            raise IAPTError(message="Homework was not found", id=homework.id)
+
+        connection.commit()
+    except IAPTError:
+        raise
+    except Exception as error:
+        raise IAPTError(message="Failed to update homework in database", error=error, id=homework.id)
+    finally:
+        if connection:
+            connection.close()
+
+
 def upsert_schedule(homeworks):
     connection = None
 
@@ -451,6 +488,45 @@ def read_homeworks(homework_ids=None):
 
     except Exception as error:
         raise IAPTError(message="Failed to read schedule table in database", error=error)
+
+    finally:
+        if connection:
+            connection.close()
+
+
+def read_latest_homeworks():
+    connection = None
+
+    try:
+        connection = get_connection()
+        current_date = datetime.now().date().isoformat()
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM schedule
+            WHERE due_date = (
+                SELECT MAX(due_date)
+                FROM schedule
+                WHERE due_date <= ?
+            )
+            ORDER BY id DESC
+            """,
+            (current_date,),
+        ).fetchall()
+
+        return [
+            Homework(
+                id=str(row["id"]),
+                badge_name=row["badge_name"],
+                category=row["category"],
+                points=row["points"],
+                due_date=datetime.strptime(row["due_date"], "%Y-%m-%d").date(),
+            )
+            for row in rows
+        ]
+
+    except Exception as error:
+        raise IAPTError(message="Failed to read schedule table", error=error)
 
     finally:
         if connection:

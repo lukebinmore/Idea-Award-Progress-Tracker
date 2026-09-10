@@ -26,7 +26,6 @@ APP_DATA = APP_ROOT / "AppData"
 
 DATABASE_DIR = APP_DATA / "database"
 CONFIG_DIR = APP_DATA / "config"
-BACKUPS_DIR = APP_DATA / "backups"
 LOGS_DIR = APP_DATA / "logs"
 
 DATABASE_PATH = DATABASE_DIR / "db.db"
@@ -46,12 +45,14 @@ DEFAULT_CONFIG = {
         "bronze_maker": "Bronze Maker Points",
         "bronze_entrepreneur": "Bronze Entrepreneur Points",
         "silver_points_total": "Silver Points Total",
-        "bronze_award_date": "Bronze Award Date",
-        "silver_award_date": "Silver Award Date",
         "badge_list": "Badge List",
     },
-    "schedule_import": {"badge_name": "Badge Name", "category": "Category", "points": "Points", "due_date": "Due Date"},
-    "settings": {"log_level": "INFO"},
+    "schedule_import": {
+        "badge_name": "Badge Name",
+        "category": "Category",
+        "points": "Points",
+        "due_date": "Due Date",
+    },
 }
 
 
@@ -59,7 +60,6 @@ def initialise_directories():
     directories = [
         DATABASE_DIR,
         CONFIG_DIR,
-        BACKUPS_DIR,
         LOGS_DIR,
     ]
 
@@ -117,3 +117,14 @@ def load_config(section=None):
     except KeyError:
         logger.error_detail("Config section not found", extra={"section": section})
         raise
+
+
+def save_config(config):
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with CONFIG_PATH.open("w", encoding="utf-8") as file:
+        json.dump(config, file, indent=4)
+
+
+def update_config(config, section, key, value):
+    config[section][key] = value
+    save_config(config)

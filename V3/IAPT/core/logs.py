@@ -49,7 +49,7 @@ def initialise_logging():
 
     log_file = LOGS_DIR / f"{datetime.now():%Y-%m-%d_%H-%M-%S}.log"
     file_handler = logging.FileHandler(log_file)
-    file_handler.setLevel(getattr(logging, config["log_level"]))
+    file_handler.setLevel(getattr(logging, "INFO"))
     root_logger.addHandler(file_handler)
 
     logs = sorted(LOGS_DIR.glob("*.log"), key=lambda path: path.stat().st_mtime)

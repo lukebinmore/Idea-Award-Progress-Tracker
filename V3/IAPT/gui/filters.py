@@ -54,6 +54,17 @@ def drawFilters(columns, wanted, layout, state, on_change=None):
                 )
             )
 
+    if "classname_selector" in wanted:
+        content.append(Label(text="Class", layout=layout, variant="subheading"))
+        options = ["All"] + get_classnames()
+        content.append(ComboBox(options=options, layout=layout, default=state.get("class_select", None)))
+        content[-1].currentIndexChanged.connect(
+            lambda index, key="classname", combo=content[-1]: (
+                setCombo(state, key, combo.currentData()),
+                on_change() if on_change else None,
+            )
+        )
+
     if "category" in wanted:
         content.append(Label(text="Category", layout=layout, variant="subheading"))
         selected_categories = set(state.get("category", []))
@@ -222,6 +233,10 @@ def applyFilters(data, state):
     classes = state.get("classname", [])
     if classes:
         data = [o for o in data if o.classname in classes]
+
+    classname = state.get("class_select", None)
+    if classname:
+        data = [o for o in data if o.classname == classname or classname == "All"]
 
     categories = state.get("category", [])
     if categories:

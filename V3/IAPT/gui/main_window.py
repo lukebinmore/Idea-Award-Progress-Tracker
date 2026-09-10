@@ -35,7 +35,8 @@ class MainWindow(QMainWindow):
         search = Search(layout=content)
 
         # Main Page Content
-        page_area = PageArea(layout=content)
+        page_area = PageArea(layout=content, updateSearchData=search.updateData)
+        search.resultSelected.connect(lambda page, arguments: page_area.showPage(page, **arguments))
 
         # Footer
         Footer(layout=base)

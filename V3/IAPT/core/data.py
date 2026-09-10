@@ -1,4 +1,12 @@
-from IAPT.core.database import read_students, read_points, read_badges, read_homeworks, update_student
+from IAPT.core.database import (
+    read_students,
+    read_points,
+    read_badges,
+    read_homeworks,
+    update_student,
+    update_homework,
+    read_latest_homeworks,
+)
 from IAPT.core.calculations import (
     calculate_badge_homeworks,
     calculate_homework_quantities,
@@ -8,7 +16,6 @@ from IAPT.core.calculations import (
 )
 from IAPT.core.models import Class
 from IAPT.core.exceptions import IAPTError
-from IAPT.core.config import load_config
 import logging
 
 logger = logging.getLogger(__name__)
@@ -51,6 +58,10 @@ def get_homeworks(homework_ids=None):
     return read_homeworks(homework_ids)
 
 
+def get_latest_homeworks():
+    return read_latest_homeworks()
+
+
 def updateStudent(student, key, value):
     try:
         if getattr(student, key) != value:
@@ -59,6 +70,16 @@ def updateStudent(student, key, value):
             logger.success("Student updated")
     except IAPTError as error:
         logger.error("Student update failed", extra={"error": error})
+
+
+def updateHomework(homework, key, value):
+    try:
+        if getattr(homework, key) != value:
+            setattr(homework, key, value)
+            update_homework(homework)
+            logger.success("Homework updated")
+    except IAPTError as error:
+        logger.error("Homework update failed", extrA={"error": error})
 
 
 def get_categories():

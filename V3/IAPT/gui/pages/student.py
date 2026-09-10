@@ -60,27 +60,30 @@ class StudentPage(Page):
             name="weekly_points",
         )
         category_box = Box(grid=True, align="center", layout=category_progress, margins=(10, 0, 10, 0), spacing=10)
-        citizen = Box(
-            vertical=True, layout=category_box, position=(0, 0), margins=(10, 10, 10, 10), variant="subheading_citizen"
+        Label(
+            text=f"Citizen\n{student.bronze_citizen_current} points",
+            layout=category_box,
+            position=(0, 0),
+            variant="citizen_dot",
         )
-        Label(text=f"Citizen\n{student.bronze_citizen_current} points", layout=citizen)
-        maker = Box(
-            vertical=True, layout=category_box, position=(0, 1), margins=(10, 10, 10, 10), variant="subheading_maker"
+        Label(
+            text=f"Maker\n{student.bronze_maker_current} points",
+            layout=category_box,
+            position=(0, 1),
+            variant="maker_dot",
         )
-        Label(text=f"Maker\n{student.bronze_maker_current} points", layout=maker)
-        worker = Box(
-            vertical=True, layout=category_box, position=(1, 0), margins=(10, 10, 10, 10), variant="subheading_worker"
+        Label(
+            text=f"Worker\n{student.bronze_worker_current} points",
+            layout=category_box,
+            position=(1, 0),
+            variant="worker_dot",
         )
-        Label(text=f"Worker\n{student.bronze_worker_current} points", layout=worker)
-
-        entrepreneur = Box(
-            vertical=True,
+        Label(
+            text=f"Entrepreneur\n{student.bronze_entrepreneur_current} points",
             layout=category_box,
             position=(1, 1),
-            margins=(10, 10, 10, 10),
-            variant="subheading_entrepreneur",
+            variant="entrepreneur_dot",
         )
-        Label(text=f"Entrepreneur\n{student.bronze_entrepreneur_current} points", layout=entrepreneur)
 
         badge_list = Box(vertical=True, layout=self.content, spacing=5, name="badge_list")
         Label(text=f"Missing Homeworks - {len(student.missing_homeworks)}", layout=badge_list, variant="subheading_red")

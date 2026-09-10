@@ -3,6 +3,7 @@
     "background_primary": "#111111",
     "background_secondary": "#181818",
     "background_tertiary": "#202020",
+    "background_tertiary_highlight": "#2B2B2B",
     "accent": "#1F5F3F",
     "accent_highlight": "#2E8B57",
     "accent_pressed": "#16452E",
@@ -10,7 +11,9 @@
     "secondary_highlight": "#65639A",
     "secondary_pressed": "#393852",
     "secondary_disabled": "#28283D",
-    "text": "#F5F5F5",
+    "text": "#E8E8E8",
+    "text_highlight": "#FFFFFF",
+    "text_pressed": "#B8D8C6",
     "text_disabled": "#777777",
     "border_primary": "#2A2A2A",
     "border_secondary": "#353535",
@@ -37,7 +40,11 @@
     "citizen": "#0070C0",
     "worker": "#00B050",
     "maker": "#ED7D31",
-    "entrepreneur": "#A678C2"
+    "entrepreneur": "#A678C2",
+    "citizen_highlight": "#3399D6",
+    "worker_highlight": "#33C875",
+    "maker_highlight": "#F3A064",
+    "entrepreneur_highlight": "#C39DDA"
   },
   "classes": {
     "global": "font-family: \"Comic Sans MS\"; font-size: 13px; color: [[colours:text]]; background-color: transparent; gridline-color: transparent; border: 0;",

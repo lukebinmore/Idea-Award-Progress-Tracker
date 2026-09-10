@@ -72,7 +72,7 @@ class Homework:
     due_date: date
 
     def __eq__(self, other):
-        return isinstance(other, Homework) and self.badge_name == other.badge_name
+        return isinstance(other, Homework) and self.id == other.id
 
     def __str__(self):
         if self.badge_name:

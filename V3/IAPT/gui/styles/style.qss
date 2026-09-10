@@ -44,10 +44,6 @@
     background-color: [[colours:secondary]];
 }
 
-#filters QComboBox:hover {
-    background-color: [[colours:secondary_highlight]];
-}
-
 #filters QCheckBox {
     padding: 5px;
     background-color: [[colours:secondary]];
@@ -61,8 +57,12 @@
     border-radius: 10px;
 }
 
-#filters QCheckBox:hover, #filters QCheckBox::indicator:hover, #filters QCheckBox::indicator:checked {
+#filters QCheckBox:hover, #filters QCheckBox::indicator:hover, #filters QCheckBox::indicator:checked, #filters QComboBox:hover, #filters QDateEdit:hover, #filters QLineEdit:hover {
     background-color: [[colours:secondary_highlight]];
+}
+
+#filters QCheckBox:pressed, #filters QCheckBox::indicator:pressed, #filters QComboBox:pressed, #filters QDateEdit:pressed {
+    background-color: [[colours:secondary_pressed]];
 }
 
 #filters QCheckBox::indicator:checked {
@@ -240,6 +240,36 @@
     margin: 5px 0;
     padding: 0 6px 4px;
 }
+
+#search_results {
+    background-color: [[colours:background_tertiary]];
+    border: 2px solid [[colours:border_secondary]];
+    border-radius: 20px;
+}
+
+#search_results QLabel[variant="subheading"] {
+    background-color: transparent;
+    font-size: 14px;
+    padding: 10px;
+}
+
+#search_results QLabel {
+    padding: 10px;
+    background-color: [[colours:secondary]];
+}
+
+#search_results QPushButton {
+    background-color: transparent;
+    text-align: left;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left: 10px;
+}
+
+#search_results QPushButton:hover {
+    color: [[colours:text_highlight]];
+    background-color: [[colours:background_tertiary_highlight]];
+}
 /* #endregion */
 
 /* #region General Pages */
@@ -275,6 +305,56 @@
     padding: 5px;
     font-weight: bold;
     font-size: 14px;
+}
+
+#main_content QPushButton[variant="Citizen"] {
+    color: [[colours:citizen]];
+}
+
+#main_content QPushButton[variant="Maker"] {
+    color: [[colours:maker]];
+}
+
+#main_content QPushButton[variant="Worker"] {
+    color: [[colours:worker]];
+}
+
+#main_content QPushButton[variant="Entrepreneur"] {
+    color: [[colours:entrepreneur]];
+}
+
+#main_content QPushButton[variant="Citizen"]:hover {
+    color: [[colours:citizen_highlight]];
+}
+
+#main_content QPushButton[variant="Maker"]:hover {
+    color: [[colours:maker_highlight]];
+}
+
+#main_content QPushButton[variant="Worker"]:hover {
+    color: [[colours:worker_highlight]];
+}
+
+#main_content QPushButton[variant="Entrepreneur"]:hover {
+    color: [[colours:entrepreneur_highlight]];
+}
+
+#main_content QLabel[variant="subheading_red"] {
+    background-color: [[colours:outstanding_homework]];
+    padding: 5px;
+    font-weight: bold;
+}
+
+#main_content QLabel[variant="subheading_yellow"] {
+    background-color: [[colours:late_homework]];
+    padding: 5px;
+    font-weight: bold;
+}
+
+#main_content QLabel[variant="subheading_green"] {
+    background-color: [[colours:completed_homework]];
+    padding: 5px;
+    font-weight: bold;
 }
 /* #endregion */
 
@@ -321,6 +401,10 @@
     subcontrol-position: center;
 }
 
+#student_info QLineEdit:hover, #student_info QComboBox:hover, #student_info QDateEdit:hover, #student_info QCheckBox:hover {
+    background-color: [[colours:background_tertiary_highlight]];
+}
+
 #student_page QProgressBar {
     margin: 5px 10px;
     background-color: [[colours:secondary]];
@@ -338,24 +422,6 @@
     border-radius: 5px;
 }
 
-#student_page QLabel[variant="subheading_red"] {
-    background-color: [[colours:outstanding_homework]];
-    padding: 5px;
-    font-weight: bold;
-}
-
-#student_page QLabel[variant="subheading_yellow"] {
-    background-color: [[colours:late_homework]];
-    padding: 5px;
-    font-weight: bold;
-}
-
-#student_page QLabel[variant="subheading_green"] {
-    background-color: [[colours:completed_homework]];
-    padding: 5px;
-    font-weight: bold;
-}
-
 #weekly_points {
     padding: 5px;
     background-color: [[colours:accent]];
@@ -364,46 +430,127 @@
     margin-bottom: 5px;
 }
 
-#student_page QWidget[variant="subheading_citizen"] {
-    background-color: [[colours:citizen]];
+#student_page QLabel[variant="citizen_dot"] {
+    border: 10px solid [[colours:citizen]];
 }
 
-#student_page QWidget[variant="subheading_worker"] {
-    background-color: [[colours:worker]];
+#student_page QLabel[variant="worker_dot"] {
+    border: 10px solid [[colours:worker]];
 }
 
-#student_page QWidget[variant="subheading_maker"] {
-    background-color: [[colours:maker]];
+#student_page QLabel[variant="maker_dot"] {
+    border: 10px solid [[colours:maker]];
 }
 
-#student_page QWidget[variant="subheading_entrepreneur"] {
-    background-color: [[colours:entrepreneur]];
+#student_page QLabel[variant="entrepreneur_dot"] {
+    border: 10px solid [[colours:entrepreneur]];
 }
 
-#student_page QPushButton[variant="Citizen"] {
-    color: [[colours:citizen]];
-}
-
-#student_page QPushButton[variant="Maker"] {
-    color: [[colours:maker]];
-}
-
-#student_page QPushButton[variant="Worker"] {
-    color: [[colours:worker]];
-}
-
-#student_page QPushButton[variant="Entrepreneur"] {
-    color: [[colours:entrepreneur]];
-}
-
-#category_progress > QWidget > QWidget {
-    border-radius: 60px;
-}
-
-#category_progress > QWidget > QWidget > QWidget {
-    border-radius: 50px;
-    min-height: 100px;
-    min-width: 100px;
+#category_progress > QWidget > QLabel {
+    border-radius: 65px;
+    min-height: 110px;
+    min-width: 110px;
     background-color: [[colours:background_tertiary]];
+}
+/* #endregion */
+
+/* #region Class Page */
+#summary_box > QWidget > QLabel {
+    border: 10px solid white;
+    border-radius: 45px;
+    font-size: 15px;
+    min-height: 70px;
+}
+
+#summary_box > QWidget > QLabel[variant="missing_total"] {
+    border-color: [[colours:outstanding]];
+}
+
+#summary_box > QWidget > QLabel[variant="late_total"] {
+    border-color: [[colours:late]];
+}
+
+#summary_box > QWidget > QLabel[variant="completed_total"] {
+    border-color: [[colours:completed]];
+}
+/* #endregion */
+
+/* #region Homework Page */
+#homework_info QWidget {
+    min-height: 5px;
+}
+
+#homework_info QLabel {
+    background-color: [[colours:secondary]];
+    padding: 5px;
+    border: 2px solid [[colours:border_secondary]];
+    border-top-left-radius: 25px;
+    border-top-right-radius: 25px;
+}
+
+#homework_info QLineEdit, #homework_info QComboBox, #homework_info QDateEdit {
+    background-color: [[colours:background_tertiary]];
+    border: 2px solid [[colours:border_secondary]];
+    padding: 5px;
+    border-bottom-left-radius: 25px;
+    border-bottom-right-radius: 25px;
+}
+
+#homework_info QLineEdit:hover, #homework_info QComboBox:hover, #homework_info QDateEdit:hover {
+    background-color: [[colours:background_tertiary_highlight]];
+}
+
+#homework_info QComboBox::drop-down {
+    border: none;
+    width: 0px;
+}
+
+#homework_info QDateEdit::drop-down {
+    border: none;
+    width: 0px;
+}
+/* #endregion */
+
+/* #region Latest Homework Page */
+#missing_homeworks QHeaderView {
+    background-color: [[colours:outstanding_homework]];
+}
+
+#late_homeworks QHeaderView {
+    background-color: [[colours:late_homework]];
+}
+
+#completed_homeworks QHeaderView {
+    background-color: [[colours:completed_homework]];
+}
+
+#awarded_homeworks QLabel[variant="subheading"] {
+    background-color: [[colours:accent]];
+}
+/* #endregion */
+
+/* #region Settings Page */
+#settings_page > QWidget > QWidget > QWidget > QWidget > QWidget > QWidget > QLabel {
+    background-color: [[colours:accent]];
+    padding: 5px;
+    border: 2px solid [[colours:border_secondary]];
+    border-top-left-radius: 25px;
+    border-top-right-radius: 25px;
+}
+
+#settings_page QLineEdit, #settings_page QCheckBox {
+    background-color: [[colours:background_tertiary]];
+    border: 2px solid [[colours:border_secondary]];
+    padding: 5px;
+    border-bottom-left-radius: 25px;
+    border-bottom-right-radius: 25px;
+}
+
+#settings_page QCheckBox::indicator {
+    subcontrol-position: center;
+}
+
+#settings_page QLineEdit:hover, #settings_page QComboBox:hover, #settings_page QDateEdit:hover, #settings_page QCheckBox:hover {
+    background-color: [[colours:background_tertiary_highlight]];
 }
 /* #endregion */
