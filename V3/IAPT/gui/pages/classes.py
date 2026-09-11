@@ -1,4 +1,4 @@
-from IAPT.gui.components import Page, Table, Label, ProgressBar, Button, Box, LineEdit, CheckBox
+from IAPT.gui.components import Page, Table, Label
 from IAPT.core.data import get_classes
 from IAPT.gui.pages.single_class import ClassPage
 from IAPT.gui.styles.stylesheet import COLOURS
@@ -33,14 +33,17 @@ class ClassesPage(Page):
         self.state = setDefaultSort(self.state, self.columns[0])
         classes = applySort(classes, self.state)
 
-        classes_table = Table(self.columns, ClassPage, self.page_area, layout=self.content)
-        for group in classes:
-            row = classes_table.addItem(group)
-            if group.outstanding_count > 0:
-                classes_table.item(row, 2).setForeground(QColor(COLOURS["outstanding"]))
+        if classes:
+            classes_table = Table(self.columns, ClassPage, self.page_area, layout=self.content)
+            for group in classes:
+                row = classes_table.addItem(group)
+                if group.outstanding_count > 0:
+                    classes_table.item(row, 2).setForeground(QColor(COLOURS["outstanding"]))
 
-            if group.late_count > 0:
-                classes_table.item(row, 3).setForeground(QColor(COLOURS["late"]))
+                if group.late_count > 0:
+                    classes_table.item(row, 3).setForeground(QColor(COLOURS["late"]))
 
-            if group.completed_count > 0:
-                classes_table.item(row, 4).setForeground(QColor(COLOURS["completed"]))
+                if group.completed_count > 0:
+                    classes_table.item(row, 4).setForeground(QColor(COLOURS["completed"]))
+        else:
+            Label(text="No Data Found", layout=self.content)

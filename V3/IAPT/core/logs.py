@@ -42,8 +42,6 @@ class NotificationHandler(logging.Handler):
 
 
 def initialise_logging():
-    config = load_config("settings")
-
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
 

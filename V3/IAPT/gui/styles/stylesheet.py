@@ -1,9 +1,10 @@
 import json
 import re
 from pathlib import Path
+from IAPT.core.config import PACKAGE_ROOT
 
 TOKEN_PATTERN = re.compile(r"\[\[(colours|classes):([^\]]+)\]\]")
-CONFIG_PATH = Path(__file__).with_name("stylesheet.json")
+CONFIG_PATH = PACKAGE_ROOT / "gui" / "styles" / "stylesheet.json"
 
 
 def load_style_config(config_path):

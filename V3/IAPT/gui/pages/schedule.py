@@ -1,4 +1,4 @@
-from IAPT.gui.components import Page, Table
+from IAPT.gui.components import Page, Table, Label
 from IAPT.core.data import get_homeworks
 from IAPT.gui.filters import setDefaultSort, applySort, drawFilters, applyFilters
 from IAPT.gui.pages.homework import HomeworkPage
@@ -34,8 +34,11 @@ class SchedulePage(Page):
 
         self.page_header.setText(f"{self.page_title} - {len(homeworks)} Results")
 
-        homeworks_table = Table(self.columns, HomeworkPage, self.page_area, layout=self.content)
-        homeworks_table.hideColumn(0)
-        for homework in homeworks:
-            row_colour = COLOURS.get(homework.category.lower(), None)
-            homeworks_table.addItem(homework, row_colour)
+        if homeworks:
+            homeworks_table = Table(self.columns, HomeworkPage, self.page_area, layout=self.content)
+            homeworks_table.hideColumn(0)
+            for homework in homeworks:
+                row_colour = COLOURS.get(homework.category.lower(), None)
+                homeworks_table.addItem(homework, row_colour)
+        else:
+            Label(text="No Data Found", layout=self.content)
